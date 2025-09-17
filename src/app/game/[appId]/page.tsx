@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { SimilarGames } from "@/components/similar-games";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!;
@@ -170,6 +172,26 @@ export default async function GameDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Similar Games Section */}
+      <Suspense
+        fallback={
+          <div className="mt-12">
+            <h2 className="text-2xl font-semibold mb-6">Similar Games</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 aspect-[460/215] rounded-lg mb-2"></div>
+                  <div className="bg-gray-200 h-4 rounded mb-1"></div>
+                  <div className="bg-gray-200 h-3 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <SimilarGames gameName={steamData.name} currentAppId={appId} />
+      </Suspense>
     </div>
   );
 }
