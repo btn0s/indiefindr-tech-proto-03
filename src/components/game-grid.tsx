@@ -10,6 +10,7 @@ interface Game {
   developer: string;
   publisher: string;
   images: string[];
+  videos: string[];
   tweetId: string;
   tweetAuthor: string;
   tweetText?: string;

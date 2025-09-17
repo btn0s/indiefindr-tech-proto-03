@@ -1,78 +1,11 @@
 import { embed } from "ai";
 import fs from "fs";
 import path from "path";
+import { EnrichedTweet, GameData } from "./types";
 
 const embeddingModel = "openai/text-embedding-3-small";
 
-interface FinalTweet {
-  id: string;
-  author: {
-    userName: string;
-    url: string;
-  };
-  steamProfiles?: Array<{
-    appId: string;
-    title: string;
-    description: string;
-    price: string;
-    tags: string[];
-    releaseDate: string;
-    developer: string;
-    publisher: string;
-    images: string[];
-  }>;
-  text?: string;
-  fullText?: string;
-  createdAt?: string;
-  likeCount?: number;
-  retweetCount?: number;
-  replyCount?: number;
-  url?: string;
-  extendedEntities?: any;
-  isQuote?: boolean;
-  quote?: any;
-  entities?: {
-    urls?: Array<{
-      expanded_url: string;
-    }>;
-  };
-  aiMetadata?: {
-    summary: string;
-    gameTitles: string[];
-    genres: string[];
-    keyFeatures: string[];
-    targetAudience: string;
-    releaseStatus: string;
-    // Enhanced fields for natural language search
-    mood: string[];
-    vibe: string[];
-    atmosphere: string[];
-    playStyle: string[];
-    socialContext: string[];
-    difficultyLevel: string;
-    emotionalTone: string[];
-    settingAesthetics: string[];
-    gameplayFeel: string[];
-    // First-principles game attributes
-    playModes: string[];
-    coreMechanics: string[];
-    cameraPerspective: string[];
-    artStyle: string[];
-    visualStyle: string[];
-    controlScheme: string[];
-    sessionLength: string[];
-    complexity: string;
-    multiplayerFeatures: string[];
-    contentRating: string;
-    platformSupport: string[];
-    languageSupport: string[];
-    accessibility: string[];
-    performance: string[];
-  };
-  embedding: number[];
-}
-
-const loadEmbeddedData = async (): Promise<FinalTweet[]> => {
+const loadEmbeddedData = async (): Promise<EnrichedTweet[]> => {
   const filePath = path.join(process.cwd(), "public/data/embed-results.json");
   const data = await fs.readFileSync(filePath, "utf-8");
   return JSON.parse(data);
@@ -85,11 +18,11 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   return dotProduct / (magnitudeA * magnitudeB);
 };
 
-export const searchGames = async (query: string) => {
+export const searchGames = async (query: string): Promise<GameData[]> => {
   try {
     // Load embedded data
     const tweets = await loadEmbeddedData();
-    
+
     // Generate embedding for the search query
     const { embedding: queryEmbedding } = await embed({
       model: embeddingModel,
@@ -98,19 +31,34 @@ export const searchGames = async (query: string) => {
 
     // Calculate similarities and filter
     const gamesWithSimilarity = tweets
-      .filter(tweet => tweet.steamProfiles && tweet.steamProfiles.length > 0)
-      .flatMap(tweet =>
-        tweet.steamProfiles!.map(game => ({
-          ...game,
-          tweetId: tweet.id,
-          tweetAuthor: tweet.author.userName,
-          tweetText: tweet.fullText || tweet.text,
-          aiMetadata: tweet.aiMetadata,
-          tweetUrl: tweet.url,
-          similarity: cosineSimilarity(queryEmbedding, tweet.embedding),
-        }))
+      .filter((tweet) => tweet.steamProfiles && tweet.steamProfiles.length > 0)
+      .flatMap((tweet) =>
+        tweet.steamProfiles!.map((game): GameData => {
+          const rawData = game.rawData;
+          return {
+            appId: game.appId,
+            title: rawData.name,
+            description: rawData.short_description,
+            price: rawData.price_overview?.final_formatted || (rawData.is_free ? "Free" : "N/A"),
+            tags: rawData.genres?.map((g: any) => g.description) || [],
+            releaseDate: rawData.release_date?.date || "",
+            developer: rawData.developers?.join(", ") || "",
+            publisher: rawData.publishers?.join(", ") || "",
+            images: [
+              rawData.header_image || "",
+              ...(rawData.screenshots?.slice(0, 4).map((s: any) => s.path_full) || []),
+            ].filter(Boolean),
+            videos: rawData.movies?.slice(0, 2).map((m: any) => m.mp4?.max || m.mp4) || [],
+            tweetId: tweet.id,
+            tweetAuthor: tweet.author.userName,
+            tweetText: tweet.fullText || tweet.text,
+            aiMetadata: tweet.aiMetadata,
+            tweetUrl: tweet.url,
+            similarity: cosineSimilarity(queryEmbedding, tweet.embedding!),
+          };
+        })
       )
-      .filter(item => item.similarity > 0.3) // Similarity threshold
+      .filter((item) => item.similarity > 0.3) // Similarity threshold
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 20); // Limit results
 
@@ -121,22 +69,37 @@ export const searchGames = async (query: string) => {
   }
 };
 
-export const getAllGames = async () => {
+export const getAllGames = async (): Promise<GameData[]> => {
   try {
     const tweets = await loadEmbeddedData();
-    
+
     const allGames = tweets
-      .filter(tweet => tweet.steamProfiles && tweet.steamProfiles.length > 0)
-      .flatMap(tweet =>
-        tweet.steamProfiles!.map(game => ({
-          ...game,
-          tweetId: tweet.id,
-          tweetAuthor: tweet.author.userName,
-          tweetText: tweet.fullText || tweet.text,
-          aiMetadata: tweet.aiMetadata,
-          tweetUrl: tweet.url,
-          similarity: 1, // Default similarity for non-search results
-        }))
+      .filter((tweet) => tweet.steamProfiles && tweet.steamProfiles.length > 0)
+      .flatMap((tweet) =>
+        tweet.steamProfiles!.map((game): GameData => {
+          const rawData = game.rawData;
+          return {
+            appId: game.appId,
+            title: rawData.name,
+            description: rawData.short_description,
+            price: rawData.price_overview?.final_formatted || (rawData.is_free ? "Free" : "N/A"),
+            tags: rawData.genres?.map((g: any) => g.description) || [],
+            releaseDate: rawData.release_date?.date || "",
+            developer: rawData.developers?.join(", ") || "",
+            publisher: rawData.publishers?.join(", ") || "",
+            images: [
+              rawData.header_image || "",
+              ...(rawData.screenshots?.slice(0, 4).map((s: any) => s.path_full) || []),
+            ].filter(Boolean),
+            videos: rawData.movies?.slice(0, 2).map((m: any) => m.mp4?.max || m.mp4) || [],
+            tweetId: tweet.id,
+            tweetAuthor: tweet.author.userName,
+            tweetText: tweet.fullText || tweet.text,
+            aiMetadata: tweet.aiMetadata,
+            tweetUrl: tweet.url,
+            similarity: 1, // Default similarity for non-search results
+          };
+        })
       );
 
     return allGames;

@@ -3,52 +3,10 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { OUTPUT_FILE as ENRICHED_OUTPUT_FILE } from "./1-enrich";
+import { EnrichedTweet } from "../types";
 
 const MODEL = "openai/gpt-4o";
 export const OUTPUT_FILE = "metadata-results.json";
-
-interface EnrichedTweet {
-  id: string;
-  author: {
-    userName: string;
-    url: string;
-  };
-  entities?: {
-    urls?: Array<{
-      expanded_url: string;
-    }>;
-  };
-  steamProfiles?: Array<{
-    appId: string;
-    title: string;
-    description: string;
-    price: string;
-    tags: string[];
-    releaseDate: string;
-    developer: string;
-    publisher: string;
-    images: string[];
-    // Enhanced fields for vibe analysis
-    categories: string[];
-    platforms: string[];
-    metacritic_score?: number;
-    content_descriptors?: string[];
-    supported_languages?: string[];
-    full_description?: string;
-    website?: string;
-  }>;
-  // Include all original tweet data
-  text?: string;
-  fullText?: string;
-  createdAt?: string;
-  likeCount?: number;
-  retweetCount?: number;
-  replyCount?: number;
-  url?: string;
-  extendedEntities?: any;
-  isQuote?: boolean;
-  quote?: any;
-}
 
 interface TweetMetadata extends EnrichedTweet {
   aiMetadata: {
@@ -136,21 +94,41 @@ async function main() {
     const gamesContext = steamGames
       .map(
         (game) => `
-Game: ${game.title}
-Description: ${game.description}
-Full Description: ${game.full_description || game.description}
-Tags: ${game.tags.join(", ")}
-Categories: ${game.categories.join(", ")}
-Platforms: ${game.platforms.join(", ")}
-Developer: ${game.developer}
-Publisher: ${game.publisher}
-Price: ${game.price}
-Release Date: ${game.releaseDate}
-Metacritic Score: ${game.metacritic_score || "N/A"}
-Content Descriptors: ${game.content_descriptors?.join(", ") || "None"}
-Supported Languages: ${game.supported_languages?.join(", ") || "N/A"}
-Website: ${game.website || "N/A"}
-Images: ${game.images.length} screenshots available`
+Game: ${game.rawData.name}
+Description: ${game.rawData.short_description}
+Full Description: ${
+          game.rawData.detailed_description || game.rawData.about_the_game || ""
+        }
+Genres: ${
+          game.rawData.genres?.map((g: any) => g.description).join(", ") ||
+          "N/A"
+        }
+Categories: ${
+          game.rawData.categories?.map((c: any) => c.description).join(", ") ||
+          "N/A"
+        }
+Platforms: ${Object.keys(game.rawData.platforms || {}).join(", ")}
+Developer: ${game.rawData.developers?.join(", ") || "N/A"}
+Publisher: ${game.rawData.publishers?.join(", ") || "N/A"}
+Price: ${
+          game.rawData.price_overview?.final_formatted ||
+          (game.rawData.is_free ? "Free" : "N/A")
+        }
+Release Date: ${game.rawData.release_date?.date || "N/A"}
+Metacritic Score: ${game.rawData.metacritic?.score || "N/A"}
+Content Descriptors: ${
+          game.rawData.content_descriptors?.ids?.join(", ") || "None"
+        }
+Supported Languages: ${Object.keys(game.rawData.supported_languages || {}).join(
+          ", "
+        )}
+Website: ${game.rawData.website || "N/A"}
+Screenshots: ${game.rawData.screenshots?.length || 0} available
+Videos: ${game.rawData.movies?.length || 0} available
+Controller Support: ${game.rawData.controller_support || "N/A"}
+Required Age: ${game.rawData.required_age || "N/A"}
+Type: ${game.rawData.type || "N/A"}
+Background: ${game.rawData.background || ""}`
       )
       .join("\n\n");
 

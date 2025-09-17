@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 
 interface Game {
   appId: string;
@@ -10,6 +13,7 @@ interface Game {
   developer: string;
   publisher: string;
   images: string[];
+  videos: string[];
   tweetId: string;
   tweetAuthor: string;
   tweetText?: string;
@@ -51,10 +55,30 @@ interface Game {
 }
 
 export const GameCard = ({ game }: { game: Game }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const hasVideo = game.videos && game.videos.length > 0;
+
   return (
-    <div className="group">
-      <div className="aspect-[460/215] bg-muted rounded-lg overflow-hidden">
-        {game.images[0] ? (
+    <div
+      className="group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 ${
+          isHovered && hasVideo ? "aspect-video" : "aspect-[460/215]"
+        }`}
+      >
+        {isHovered && hasVideo ? (
+          <video
+            src={game.videos[0]}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover rounded-lg shadow-md"
+          />
+        ) : game.images[0] ? (
           <Image
             src={game.images[0]}
             alt={game.title}

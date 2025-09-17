@@ -19,14 +19,7 @@ interface TweetWithMetadata {
   };
   steamProfiles?: Array<{
     appId: string;
-    title: string;
-    description: string;
-    price: string;
-    tags: string[];
-    releaseDate: string;
-    developer: string;
-    publisher: string;
-    images: string[];
+    rawData: any; // Complete raw Steam API response
   }>;
   text?: string;
   fullText?: string;

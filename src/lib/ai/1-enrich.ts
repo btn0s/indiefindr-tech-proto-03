@@ -1,51 +1,15 @@
 import fs from "fs";
 import path from "path";
 import { OUTPUT_FILE as GATHER_OUTPUT_FILE } from "./0-gather";
+import { GatherData, SteamData, EnrichedTweet } from "../types";
 
 export const OUTPUT_FILE = "enrich-results.json";
 
-interface TwitterTweet {
-  id: string;
-  author: {
-    userName: string;
-    url: string;
-  };
-  entities?: {
-    urls?: Array<{
-      expanded_url: string;
-    }>;
-  };
-}
-
-interface SteamProfile {
-  appId: string;
-  title: string;
-  description: string;
-  price: string;
-  tags: string[];
-  releaseDate: string;
-  developer: string;
-  publisher: string;
-  images: string[];
-  // Enhanced fields for vibe analysis
-  categories: string[];
-  platforms: string[];
-  metacritic_score?: number;
-  content_descriptors?: string[];
-  supported_languages?: string[];
-  full_description?: string;
-  website?: string;
-}
-
-interface EnrichedTweet extends TwitterTweet {
-  steamProfiles?: SteamProfile[];
-}
-
-const extractSteamUrls = (tweets: TwitterTweet[]): string[] => {
+const extractSteamUrls = (tweets: GatherData[]): string[] => {
   const steamUrls = new Set<string>();
 
   tweets.forEach((tweet) => {
-    tweet.entities?.urls?.forEach((url) => {
+    tweet.entities?.urls?.forEach((url: { expanded_url: string }) => {
       if (url.expanded_url.includes("store.steampowered.com/app/")) {
         steamUrls.add(url.expanded_url);
       }
@@ -57,7 +21,7 @@ const extractSteamUrls = (tweets: TwitterTweet[]): string[] => {
 
 const fetchSteamProfiles = async (
   steamUrls: string[]
-): Promise<Map<string, SteamProfile>> => {
+): Promise<Map<string, SteamData>> => {
   const steamMap = new Map();
 
   // Process in batches
@@ -89,42 +53,10 @@ const fetchSteamProfiles = async (
         const detailsData = await detailsRes.json();
         const appDetails = detailsData[String(appId)]?.data;
 
-        if (appDetails) {
-          const steamProfile: SteamProfile = {
+        if (appDetails && appDetails.success !== false) {
+          const steamProfile: SteamData = {
             appId,
-            title: appDetails.name || "",
-            description: appDetails.short_description || "",
-            price: appDetails.price_overview?.final_formatted || "Free",
-            tags:
-              appDetails.genres?.map((genre: any) => genre.description) || [],
-            releaseDate: appDetails.release_date?.date || "",
-            developer: appDetails.developers?.join(", ") || "",
-            publisher: appDetails.publishers?.join(", ") || "",
-            images: [
-              appDetails.header_image || "",
-              ...(appDetails.screenshots
-                ?.slice(0, 4)
-                .map((s: any) => s.path_full) || []),
-            ].filter(Boolean),
-            // Enhanced fields for vibe analysis
-            categories:
-              appDetails.categories?.map((cat: any) => cat.description) || [],
-            platforms: Object.keys(appDetails.platforms || {}).filter(
-              (platform) => appDetails.platforms[platform]
-            ),
-            metacritic_score: appDetails.metacritic?.score,
-            content_descriptors:
-              appDetails.content_descriptors?.ids
-                ?.map(
-                  (id: string) =>
-                    appDetails.content_descriptors.descriptors[id]?.name
-                )
-                .filter(Boolean) || [],
-            supported_languages: Object.keys(
-              appDetails.supported_languages || {}
-            ).filter((lang) => appDetails.supported_languages[lang]),
-            full_description: appDetails.detailed_description || "",
-            website: appDetails.website || "",
+            rawData: appDetails, // Store complete raw Steam data
           };
 
           steamMap.set(appId, steamProfile);
@@ -141,9 +73,7 @@ const fetchSteamProfiles = async (
   return steamMap;
 };
 
-const enrichTweets = async (
-  tweets: TwitterTweet[]
-): Promise<EnrichedTweet[]> => {
+const enrichTweets = async (tweets: GatherData[]): Promise<EnrichedTweet[]> => {
   console.log(`Starting enrichment for ${tweets.length} tweets`);
 
   // Extract Steam URLs
@@ -159,7 +89,7 @@ const enrichTweets = async (
     const enriched: EnrichedTweet = { ...tweet };
 
     // Add Steam profile data
-    const steamGames: SteamProfile[] = [];
+    const steamGames: SteamData[] = [];
     tweet.entities?.urls?.forEach((url) => {
       const appId = url.expanded_url.match(/\/app\/(\d+)/)?.[1];
       if (appId && steamProfiles.has(appId)) {
@@ -190,7 +120,7 @@ const main = async () => {
       throw new Error("No tweet data found. Run 0-gather.ts first.");
     }
 
-    const tweets: TwitterTweet[] = JSON.parse(
+    const tweets: GatherData[] = JSON.parse(
       fs.readFileSync(inputFile, "utf-8")
     );
     console.log(`Loaded ${tweets.length} tweets`);
