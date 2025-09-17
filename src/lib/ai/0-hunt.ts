@@ -18,7 +18,7 @@ const GATHER_SEARCH_TERMS = [
   //   '"indie game developer"',
   //   '"gamedev"',
 ];
-const GATHER_LIMIT = 2;
+const GATHER_LIMIT = process.env.GATHER_LIMIT || 50;
 
 // Phase 2: Backup search configuration
 const BACKUP_SEARCH_TEMPLATES = [

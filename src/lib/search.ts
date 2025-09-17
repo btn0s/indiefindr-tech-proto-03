@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { embed } from "ai";
+import { embed, generateText } from "ai";
 import { GameData } from "@/lib/types";
 import models from "@/lib/ai/models";
 
@@ -91,6 +91,31 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (magnitudeA * magnitudeB);
 }
 
+async function transformQuery(userQuery: string): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model: models.chatModelMini,
+      temperature: 0.3,
+      system: `Transform user search queries into rich semantic descriptions for indie game search.
+
+Focus on gameplay mechanics, visual style, themes, and player experience.
+
+Examples:
+"games like hades" → "fast-paced action roguelike Greek mythology isometric hack-slash challenging combat narrative storytelling underworld themes"
+"relaxing games" → "peaceful calm low-stress exploration crafting cozy atmosphere meditative gameplay wholesome experience"
+"co-op puzzle games" → "cooperative multiplayer puzzle-solving teamwork brain-teasers logic challenges shared problem-solving"
+"pixel art platformer" → "retro pixel graphics side-scrolling jumping platforming nostalgic 16-bit style precision movement"
+"challenging games" → "difficult gameplay demanding skill-based mechanics precise timing mastery-focused hardcore experience"`,
+      prompt: `Transform this search query into a rich semantic description: "${userQuery}"`,
+    });
+
+    return text.trim();
+  } catch (error) {
+    console.error("Query transformation failed:", error);
+    return userQuery; // Fallback to original query
+  }
+}
+
 export async function searchGames(query: string): Promise<GameData[]> {
   if (!query || query.length < 3) {
     return getAllGames();
@@ -101,10 +126,14 @@ export async function searchGames(query: string): Promise<GameData[]> {
   if (cached) return cached;
 
   try {
+    // Transform natural language query into rich semantic description
+    const semanticQuery = await transformQuery(query);
+    console.log(`🔄 Query transformation: "${query}" → "${semanticQuery}"`);
+
     // Get query embedding
     const { embedding: queryEmbedding } = await embed({
       model: models.embeddingModel,
-      value: query,
+      value: semanticQuery,
     });
 
     // Load games from database
@@ -123,7 +152,7 @@ export async function searchGames(query: string): Promise<GameData[]> {
     }
 
     // Find similar games
-    const threshold = 0.35;
+    const threshold = 0.5;
     const candidates = games
       .map((game: any) => {
         if (!game.embedding) return null;
