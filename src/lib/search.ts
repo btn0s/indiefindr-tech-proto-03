@@ -30,83 +30,8 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
     });
 
     // Dynamic similarity threshold based on query length
-    const threshold = query.length <= 5 ? 0.18 : 0.2;
-
-    // Keyword relevance checker
-    const hasRelevantKeywords = (game: GameData, query: string): boolean => {
-      // Define keyword mappings for common queries
-        const keywordMap: Record<string, string[]> = {
-          space: [
-            "space",
-            "galaxy",
-            "cosmic",
-            "solar",
-            "astronaut",
-            "spaceship",
-            "star",
-            "planet",
-            "universe",
-          ],
-          horror: [
-            "horror",
-            "scary",
-            "frightening",
-            "terrifying",
-            "spooky",
-            "dread",
-          ],
-          rpg: [
-            "rpg",
-            "role playing",
-            "character",
-            "level",
-            "quest",
-            "adventure",
-          ],
-          puzzle: ["puzzle", "brain", "logic", "challenge", "solve"],
-          action: ["action", "combat", "fight", "battle", "shooter"],
-          strategy: ["strategy", "tactical", "plan", "manage", "build"],
-          indie: ["indie", "independent", "small studio", "creator"],
-          // Multi-word queries
-          "space exploration": [
-            "space",
-            "exploration",
-            "galaxy",
-            "cosmic",
-            "solar",
-            "universe",
-            "discover",
-          ],
-          "cozy games": [
-            "cozy",
-            "relaxing",
-            "calm",
-            "peaceful",
-            "chill",
-            "comfortable",
-          ],
-          "survival horror": [
-            "survival",
-            "horror",
-            "scary",
-            "frightening",
-            "terrifying",
-          ],
-          "action rpg": [
-            "action",
-            "rpg",
-            "role playing",
-            "character",
-            "combat",
-          ],
-        };
-
-      const keywords = keywordMap[query.toLowerCase()] || [query.toLowerCase()];
-      const text = `${game.title} ${game.description} ${
-        game.tweetText || ""
-      }`.toLowerCase();
-      return keywords.some((keyword) => text.includes(keyword));
-    };
+    // Lower thresholds to rely purely on semantic similarity from embeddings
+    const threshold = query.length <= 5 ? 0.15 : 0.18;
 
     // Calculate similarities and filter
     const gamesWithSimilarity = tweets
@@ -145,7 +70,6 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
         })
       )
       .filter((item) => item.similarity && item.similarity > threshold)
-      .filter((item) => hasRelevantKeywords(item, query)) // Multi-stage filtering
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
       .slice(0, 20); // Limit results
 

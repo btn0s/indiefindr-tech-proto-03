@@ -113,47 +113,54 @@ async function main() {
     );
 
     try {
-      // Create a comprehensive text for embedding that includes experiential metadata
+      // Create a comprehensive text for embedding optimized for semantic search
       const embeddingText = [
+        // Core game information
         tweet.aiMetadata.summary,
         `Games: ${tweet.aiMetadata.gameTitles.join(", ")}`,
+
+        // Genre and style information (key for search)
         `Genres: ${tweet.aiMetadata.genres.join(", ")}`,
-        `Features: ${tweet.aiMetadata.keyFeatures.join(", ")}`,
-        `Target: ${tweet.aiMetadata.targetAudience}`,
-        `Status: ${tweet.aiMetadata.releaseStatus}`,
-        // Enhanced experiential metadata for better semantic search
+        `Art Style: ${tweet.aiMetadata.artStyle?.join(", ") || ""}`,
+        `Visual Style: ${tweet.aiMetadata.visualStyle?.join(", ") || ""}`,
+        `Camera Perspective: ${
+          tweet.aiMetadata.cameraPerspective?.join(", ") || ""
+        }`,
+
+        // Gameplay mechanics (critical for "shooter", "action", etc.)
+        `Core Mechanics: ${tweet.aiMetadata.coreMechanics?.join(", ") || ""}`,
+        `Key Features: ${tweet.aiMetadata.keyFeatures.join(", ")}`,
+        `Play Modes: ${tweet.aiMetadata.playModes?.join(", ") || ""}`,
+        `Control Scheme: ${tweet.aiMetadata.controlScheme?.join(", ") || ""}`,
+
+        // Emotional and experiential descriptors
         `Mood: ${tweet.aiMetadata.mood?.join(", ") || ""}`,
         `Vibe: ${tweet.aiMetadata.vibe?.join(", ") || ""}`,
         `Atmosphere: ${tweet.aiMetadata.atmosphere?.join(", ") || ""}`,
         `Play Style: ${tweet.aiMetadata.playStyle?.join(", ") || ""}`,
+        `Emotional Tone: ${tweet.aiMetadata.emotionalTone?.join(", ") || ""}`,
+        `Gameplay Feel: ${tweet.aiMetadata.gameplayFeel?.join(", ") || ""}`,
+
+        // Social and difficulty context
         `Social Context: ${tweet.aiMetadata.socialContext?.join(", ") || ""}`,
         `Difficulty: ${tweet.aiMetadata.difficultyLevel || ""}`,
-        `Emotional Tone: ${tweet.aiMetadata.emotionalTone?.join(", ") || ""}`,
-        `Aesthetics: ${tweet.aiMetadata.settingAesthetics?.join(", ") || ""}`,
-        `Gameplay Feel: ${tweet.aiMetadata.gameplayFeel?.join(", ") || ""}`,
-        // First-principles game attributes
-        `Play Modes: ${tweet.aiMetadata.playModes?.join(", ") || ""}`,
-        `Core Mechanics: ${tweet.aiMetadata.coreMechanics?.join(", ") || ""}`,
-        `Camera Perspective: ${
-          tweet.aiMetadata.cameraPerspective?.join(", ") || ""
-        }`,
-        `Art Style: ${tweet.aiMetadata.artStyle?.join(", ") || ""}`,
-        `Visual Style: ${tweet.aiMetadata.visualStyle?.join(", ") || ""}`,
-        `Control Scheme: ${tweet.aiMetadata.controlScheme?.join(", ") || ""}`,
-        `Session Length: ${tweet.aiMetadata.sessionLength?.join(", ") || ""}`,
         `Complexity: ${tweet.aiMetadata.complexity || ""}`,
+        `Session Length: ${tweet.aiMetadata.sessionLength?.join(", ") || ""}`,
+
+        // Multiplayer and technical details
         `Multiplayer Features: ${
           tweet.aiMetadata.multiplayerFeatures?.join(", ") || ""
         }`,
         `Content Rating: ${tweet.aiMetadata.contentRating || ""}`,
+        `Target Audience: ${tweet.aiMetadata.targetAudience}`,
+        `Release Status: ${tweet.aiMetadata.releaseStatus}`,
+
+        // Technical specs
         `Platform Support: ${
           tweet.aiMetadata.platformSupport?.join(", ") || ""
         }`,
-        `Language Support: ${
-          tweet.aiMetadata.languageSupport?.join(", ") || ""
-        }`,
-        `Accessibility: ${tweet.aiMetadata.accessibility?.join(", ") || ""}`,
         `Performance: ${tweet.aiMetadata.performance?.join(", ") || ""}`,
+        `Accessibility: ${tweet.aiMetadata.accessibility?.join(", ") || ""}`,
       ]
         .filter((line) => line.trim() && !line.endsWith(": "))
         .join("\n");

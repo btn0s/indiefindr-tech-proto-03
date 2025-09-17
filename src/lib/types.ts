@@ -281,3 +281,25 @@ export interface SearchResult {
   query?: string;
   count?: number;
 }
+
+// Reference game for "games like X" functionality
+export interface ReferenceGame {
+  id: string;
+  steamAppId: number;
+  name: string;
+  description: string;
+  isIndie: boolean;
+  isHidden: boolean; // Hide from public lists if not indie
+  metadata?: AIMetadata;
+  embedding?: number[];
+  steamUrl: string;
+  createdAt: string;
+}
+
+// Similar games search result
+export interface SimilarGamesResult {
+  referenceGame: ReferenceGame;
+  similarGames: GameData[];
+  wasNewReference: boolean;
+  query: string;
+}

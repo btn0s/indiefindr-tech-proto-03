@@ -210,7 +210,7 @@ Background: ${game.rawData.background || ""}`
             coreMechanics: z
               .array(z.string())
               .describe(
-                "Core gameplay mechanics (e.g., 'platforming', 'puzzle-solving', 'resource management', 'combat', 'exploration', 'crafting')"
+                "Core gameplay mechanics with specific action words (e.g., 'shooting', 'fighting', 'platforming', 'puzzle-solving', 'resource management', 'combat', 'exploration', 'crafting', 'driving', 'flying', 'sailing', 'building', 'trading', 'stealth', 'racing')"
               ),
             cameraPerspective: z
               .array(z.string())
@@ -295,8 +295,19 @@ You are analyzing comprehensive Steam game data to create rich, searchable metad
 Key Analysis Areas:
 1. FEELINGS & EXPERIENCES: What does it feel like to play? Emotional journey, atmosphere, social contexts
 2. FIRST-PRINCIPLES ATTRIBUTES: Core mechanics, play modes, camera perspective, art style, controls
-3. TECHNICAL SPECS: Platforms, languages, accessibility, performance characteristics
-4. SOCIAL CONTEXTS: Single-player, couch co-op, online multiplayer, party games, family-friendly
+3. GAMEPLAY MECHANICS: Be VERY specific about what players DO (shooting, fighting, driving, flying, building, etc.)
+4. TECHNICAL SPECS: Platforms, languages, accessibility, performance characteristics
+5. SOCIAL CONTEXTS: Single-player, couch co-op, online multiplayer, party games, family-friendly
+
+CRITICAL: For coreMechanics, use ACTION VERBS that describe what players actually do:
+- "shooting" for FPS/shooter games
+- "fighting" or "combat" for action games
+- "driving" for racing games
+- "flying" for flight simulators
+- "building" for construction games
+- "stealth" for sneaking games
+- "exploration" for open-world games
+- "puzzle-solving" for puzzle games
 
 Use the rich Steam data provided:
 - Categories and tags to understand game mechanics and genre
