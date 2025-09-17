@@ -6,9 +6,39 @@ import { OUTPUT_FILE as METADATA_OUTPUT_FILE } from "./2-generate-metadata";
 const embeddingModel = "openai/text-embedding-3-small";
 const OUTPUT_FILE = "embed-results.json";
 
-interface TweetMetadata {
+interface TweetWithMetadata {
   id: string;
-  metadata: {
+  author: {
+    userName: string;
+    url: string;
+  };
+  entities?: {
+    urls?: Array<{
+      expanded_url: string;
+    }>;
+  };
+  steamProfiles?: Array<{
+    appId: string;
+    title: string;
+    description: string;
+    price: string;
+    tags: string[];
+    releaseDate: string;
+    developer: string;
+    publisher: string;
+    images: string[];
+  }>;
+  text?: string;
+  fullText?: string;
+  createdAt?: string;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  url?: string;
+  extendedEntities?: any;
+  isQuote?: boolean;
+  quote?: any;
+  aiMetadata: {
     summary: string;
     gameTitles: string[];
     genres: string[];
@@ -18,18 +48,11 @@ interface TweetMetadata {
   };
 }
 
-interface EmbeddedTweet {
-  id: string;
-  summary: string;
-  gameTitles: string[];
-  genres: string[];
-  keyFeatures: string[];
-  targetAudience: string;
-  releaseStatus: string;
+interface FinalTweet extends TweetWithMetadata {
   embedding: number[];
 }
 
-const loadMetadataFile = async (): Promise<TweetMetadata[]> => {
+const loadMetadataFile = async (): Promise<TweetWithMetadata[]> => {
   const filePath = path.join(
     __dirname,
     "../../../public/data",
@@ -40,17 +63,17 @@ const loadMetadataFile = async (): Promise<TweetMetadata[]> => {
 };
 
 const writeEmbeddedData = async (
-  embeddedTweets: EmbeddedTweet[],
+  finalTweets: FinalTweet[],
   outputPath: string
 ) => {
   try {
     await fs.promises.writeFile(
       outputPath,
-      JSON.stringify(embeddedTweets, null, 2)
+      JSON.stringify(finalTweets, null, 2)
     );
-    console.log(`All embedded data written to ${outputPath}`);
+    console.log(`All final data written to ${outputPath}`);
   } catch (error) {
-    console.error("Error writing embedded data to file:", error);
+    console.error("Error writing final data to file:", error);
     throw error;
   }
 };
@@ -61,7 +84,7 @@ async function main() {
 
   console.log(`Processing ${tweetsWithMetadata.length} tweets for embedding`);
 
-  const embeddedTweets: EmbeddedTweet[] = [];
+  const finalTweets: FinalTweet[] = [];
 
   for (const tweet of tweetsWithMetadata) {
     console.clear();
@@ -74,12 +97,12 @@ async function main() {
     try {
       // Create a comprehensive text for embedding
       const embeddingText = [
-        tweet.metadata.summary,
-        `Games: ${tweet.metadata.gameTitles.join(", ")}`,
-        `Genres: ${tweet.metadata.genres.join(", ")}`,
-        `Features: ${tweet.metadata.keyFeatures.join(", ")}`,
-        `Target: ${tweet.metadata.targetAudience}`,
-        `Status: ${tweet.metadata.releaseStatus}`,
+        tweet.aiMetadata.summary,
+        `Games: ${tweet.aiMetadata.gameTitles.join(", ")}`,
+        `Genres: ${tweet.aiMetadata.genres.join(", ")}`,
+        `Features: ${tweet.aiMetadata.keyFeatures.join(", ")}`,
+        `Target: ${tweet.aiMetadata.targetAudience}`,
+        `Status: ${tweet.aiMetadata.releaseStatus}`,
       ].join("\n");
 
       // Generate embedding
@@ -88,14 +111,9 @@ async function main() {
         value: embeddingText,
       });
 
-      embeddedTweets.push({
-        id: tweet.id,
-        summary: tweet.metadata.summary,
-        gameTitles: tweet.metadata.gameTitles,
-        genres: tweet.metadata.genres,
-        keyFeatures: tweet.metadata.keyFeatures,
-        targetAudience: tweet.metadata.targetAudience,
-        releaseStatus: tweet.metadata.releaseStatus,
+      // Create final tweet with all data + embedding
+      finalTweets.push({
+        ...tweet, // All original tweet data + Steam data + AI metadata
         embedding,
       });
     } catch (error) {
@@ -103,15 +121,13 @@ async function main() {
     }
   }
 
-  // Save embedded data to JSON file
+  // Save final data to JSON file
   const outputPath = path.join(__dirname, "../../../public/data", OUTPUT_FILE);
-  await writeEmbeddedData(embeddedTweets, outputPath);
+  await writeEmbeddedData(finalTweets, outputPath);
 
   console.log("Successfully embedded and saved all tweets!");
-  console.log(`Total tweets processed: ${embeddedTweets.length}`);
-  console.log(
-    `Embedding dimensions: ${embeddedTweets[0]?.embedding.length || 0}`
-  );
+  console.log(`Total tweets processed: ${finalTweets.length}`);
+  console.log(`Embedding dimensions: ${finalTweets[0]?.embedding.length || 0}`);
 }
 
 // Only run if this script is executed directly

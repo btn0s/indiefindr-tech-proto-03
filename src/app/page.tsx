@@ -58,16 +58,44 @@ interface TwitterQuoteTweet {
   };
 }
 
-interface TwitterTweet {
+interface SteamProfile {
+  appId: string;
+  title: string;
+  description: string;
+  price: string;
+  tags: string[];
+  releaseDate: string;
+  developer: string;
+  publisher: string;
+  images: string[];
+}
+
+interface AIMetadata {
+  summary: string;
+  gameTitles: string[];
+  genres: string[];
+  keyFeatures: string[];
+  targetAudience: string;
+  releaseStatus: string;
+}
+
+interface EnrichedTweet {
   id: string;
-  url: string;
-  text: string;
-  fullText: string;
-  createdAt: string;
-  likeCount: number;
-  retweetCount: number;
-  replyCount: number;
-  author: TwitterUser;
+  url?: string;
+  text?: string;
+  fullText?: string;
+  createdAt?: string;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  author: {
+    userName: string;
+    url: string;
+    name?: string;
+    profilePicture?: string;
+    followers?: number;
+    isBlueVerified?: boolean;
+  };
   isQuote?: boolean;
   quote?: TwitterQuoteTweet;
   extendedEntities?: {
@@ -76,13 +104,13 @@ interface TwitterTweet {
   entities?: {
     urls?: TwitterUrl[];
   };
+  steamProfiles?: SteamProfile[];
+  aiMetadata?: AIMetadata;
+  embedding?: number[];
 }
 
-const loadData = async (): Promise<TwitterTweet[]> => {
-  const filePath = path.join(
-    process.cwd(),
-    "public/data/search-twitter-results.json"
-  );
+const loadData = async (): Promise<EnrichedTweet[]> => {
+  const filePath = path.join(process.cwd(), "public/data/embed-results.json");
   const data = await fs.readFile(filePath, "utf-8");
   return JSON.parse(data);
 };
@@ -203,6 +231,91 @@ const renderMedia = (media: TwitterMedia) => {
   return null;
 };
 
+const renderSteamGame = (game: SteamProfile) => {
+  return (
+    <div className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+      <div className="flex items-start gap-4">
+        {game.images[0] && (
+          <Image
+            src={game.images[0]}
+            alt={game.title}
+            width={120}
+            height={45}
+            className="rounded object-cover"
+            unoptimized
+          />
+        )}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-semibold text-lg text-gray-900">
+              {game.title}
+            </h3>
+            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+              {game.price}
+            </span>
+          </div>
+          <p className="text-gray-700 text-sm mb-3 line-clamp-2">
+            {game.description}
+          </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {game.tags.slice(0, 4).map((tag, index) => (
+              <span
+                key={index}
+                className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          <div className="text-xs text-gray-600 space-y-1">
+            <div>Developer: {game.developer}</div>
+            <div>Publisher: {game.publisher}</div>
+            <div>Release: {game.releaseDate}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const renderAIMetadata = (metadata: AIMetadata) => {
+  return (
+    <div className="mt-4 bg-gray-50 rounded-lg p-4 border">
+      <h4 className="font-semibold text-sm text-gray-900 mb-2">AI Analysis</h4>
+      <p className="text-sm text-gray-700 mb-3">{metadata.summary}</p>
+
+      <div className="grid grid-cols-2 gap-4 text-xs">
+        <div>
+          <span className="font-medium text-gray-600">Target Audience:</span>
+          <p className="text-gray-800">{metadata.targetAudience}</p>
+        </div>
+        <div>
+          <span className="font-medium text-gray-600">Release Status:</span>
+          <p className="text-gray-800">{metadata.releaseStatus}</p>
+        </div>
+      </div>
+
+      {metadata.keyFeatures.length > 0 && (
+        <div className="mt-3">
+          <span className="font-medium text-gray-600 text-xs">
+            Key Features:
+          </span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {metadata.keyFeatures.slice(0, 3).map((feature, index) => (
+              <span
+                key={index}
+                className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded"
+              >
+                {feature}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const renderQuoteTweet = (quote: TwitterQuoteTweet) => {
   return (
     <div className="mt-4 border-l-4 border-gray-300 pl-4 bg-gray-50 rounded-r-lg p-4">
@@ -266,37 +379,47 @@ const renderQuoteTweet = (quote: TwitterQuoteTweet) => {
 
 export default async function Home() {
   const tweets = await loadData();
+  const tweetsWithGames = tweets.filter(
+    (tweet) => tweet.steamProfiles && tweet.steamProfiles.length > 0
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Indiefindr Tech Proto 03
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            🎮 Indiefindr
           </h1>
-          <p className="text-gray-600">
-            Found {tweets.length} tweets about upcoming indie games
+          <p className="text-gray-600 text-lg">
+            Discover {tweetsWithGames.length} indie games from Twitter buzz
           </p>
+          <div className="mt-4 flex justify-center gap-6 text-sm text-gray-500">
+            <span>📊 {tweets.length} total tweets</span>
+            <span>🎯 {tweetsWithGames.length} with game data</span>
+            <span>🤖 AI analyzed & embedded</span>
+          </div>
         </div>
 
-        {tweets.map((tweet) => (
+        {tweetsWithGames.map((tweet) => (
           <div
             key={tweet.id}
             className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
           >
             {/* Author info */}
             <div className="flex items-center gap-3 mb-4">
-              <Image
-                src={tweet.author.profilePicture}
-                alt={tweet.author.name}
-                width={48}
-                height={48}
-                className="rounded-full"
-              />
+              {tweet.author.profilePicture && (
+                <Image
+                  src={tweet.author.profilePicture}
+                  alt={tweet.author.name || tweet.author.userName}
+                  width={48}
+                  height={48}
+                  className="rounded-full"
+                />
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-900">
-                    {tweet.author.name}
+                    {tweet.author.name || tweet.author.userName}
                   </span>
                   {tweet.author.isBlueVerified && (
                     <span className="text-blue-500">✓</span>
@@ -305,20 +428,28 @@ export default async function Home() {
                     @{tweet.author.userName}
                   </span>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {formatDate(tweet.createdAt)}
-                </div>
+                {tweet.createdAt && (
+                  <div className="text-sm text-gray-500">
+                    {formatDate(tweet.createdAt)}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Tweet content */}
-            <div className="mb-4">
-              <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
-                {decodeHtmlEntities(
-                  expandUrls(tweet.fullText, tweet.entities?.urls, tweet.id)
-                )}
-              </p>
-            </div>
+            {(tweet.fullText || tweet.text) && (
+              <div className="mb-4">
+                <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
+                  {decodeHtmlEntities(
+                    expandUrls(
+                      tweet.fullText || tweet.text || "",
+                      tweet.entities?.urls,
+                      tweet.id
+                    )
+                  )}
+                </p>
+              </div>
+            )}
 
             {/* Media content */}
             {tweet.extendedEntities?.media &&
@@ -330,36 +461,55 @@ export default async function Home() {
                 </div>
               )}
 
+            {/* Steam Games */}
+            {tweet.steamProfiles &&
+              tweet.steamProfiles.map((game, index) => (
+                <div key={index}>{renderSteamGame(game)}</div>
+              ))}
+
+            {/* AI Metadata */}
+            {tweet.aiMetadata && renderAIMetadata(tweet.aiMetadata)}
+
             {/* Engagement stats */}
-            <div className="flex items-center gap-6 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <span>💬</span>
-                <span>{formatNumber(tweet.replyCount)}</span>
+            {(tweet.likeCount || tweet.retweetCount || tweet.replyCount) && (
+              <div className="flex items-center gap-6 text-sm text-gray-500 mt-4">
+                {tweet.replyCount && (
+                  <div className="flex items-center gap-1">
+                    <span>💬</span>
+                    <span>{formatNumber(tweet.replyCount)}</span>
+                  </div>
+                )}
+                {tweet.retweetCount && (
+                  <div className="flex items-center gap-1">
+                    <span>🔄</span>
+                    <span>{formatNumber(tweet.retweetCount)}</span>
+                  </div>
+                )}
+                {tweet.likeCount && (
+                  <div className="flex items-center gap-1">
+                    <span>❤️</span>
+                    <span>{formatNumber(tweet.likeCount)}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1">
-                <span>🔄</span>
-                <span>{formatNumber(tweet.retweetCount)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span>❤️</span>
-                <span>{formatNumber(tweet.likeCount)}</span>
-              </div>
-            </div>
+            )}
 
             {/* Quote tweet */}
             {tweet.isQuote && tweet.quote && renderQuoteTweet(tweet.quote)}
 
             {/* Tweet link */}
-            <div className="mt-4 pt-4 border-t">
-              <a
-                href={tweet.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                View on Twitter →
-              </a>
-            </div>
+            {tweet.url && (
+              <div className="mt-4 pt-4 border-t">
+                <a
+                  href={tweet.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  View on Twitter →
+                </a>
+              </div>
+            )}
           </div>
         ))}
       </div>

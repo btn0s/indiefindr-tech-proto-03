@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import * as cheerio from "cheerio";
 import { OUTPUT_FILE as GATHER_OUTPUT_FILE } from "./0-gather";
 
 export const OUTPUT_FILE = "enrich-results.json";
@@ -48,7 +47,7 @@ const extractSteamUrls = (tweets: TwitterTweet[]): string[] => {
   return Array.from(steamUrls);
 };
 
-const scrapeSteamProfiles = async (
+const fetchSteamProfiles = async (
   steamUrls: string[]
 ): Promise<Map<string, SteamProfile>> => {
   const steamMap = new Map();
@@ -59,7 +58,7 @@ const scrapeSteamProfiles = async (
     const batch = steamUrls.slice(i, i + batchSize);
 
     console.log(
-      `Scraping Steam profiles batch ${
+      `Fetching Steam profiles batch ${
         Math.floor(i / batchSize) + 1
       }/${Math.ceil(steamUrls.length / batchSize)}`
     );
@@ -69,58 +68,45 @@ const scrapeSteamProfiles = async (
         const appId = url.match(/\/app\/(\d+)/)?.[1];
         if (!appId) continue;
 
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            Accept:
-              "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
-            Connection: "keep-alive",
-          },
-        });
+        // Use Steam API instead of web scraping
+        const detailsRes = await fetch(
+          `https://store.steampowered.com/api/appdetails?appids=${appId}`
+        );
 
-        if (!response.ok) {
-          console.error(`HTTP error for ${url}: ${response.status}`);
+        if (!detailsRes.ok) {
+          console.error(`HTTP error for ${url}: ${detailsRes.status}`);
           continue;
         }
 
-        const html = await response.text();
-        const $ = cheerio.load(html);
+        const detailsData = await detailsRes.json();
+        const appDetails = detailsData[String(appId)]?.data;
 
-        const steamProfile: SteamProfile = {
-          appId,
-          title: $(".apphub_AppName").text().trim() || "",
-          description: $(".game_description_snippet").text().trim() || "",
-          price:
-            $(".discount_final_price").text().trim() ||
-            $(".game_purchase_price").text().trim() ||
-            "Free",
-          tags: $(".app_tag")
-            .map((_, el) => $(el).text().trim())
-            .get()
-            .slice(0, 10),
-          releaseDate: $(".date").text().trim() || "",
-          developer: $(".dev_row .summary").eq(0).text().trim() || "",
-          publisher: $(".dev_row .summary").eq(1).text().trim() || "",
-          images: [
-            $(".game_header_image_full").attr("src") || "",
-            ...$(".highlight_strip_item img")
-              .map((_, el) => $(el).attr("src"))
-              .get()
-              .slice(0, 4),
-          ].filter(Boolean),
-        };
+        if (appDetails) {
+          const steamProfile: SteamProfile = {
+            appId,
+            title: appDetails.name || "",
+            description: appDetails.short_description || "",
+            price: appDetails.price_overview?.final_formatted || "Free",
+            tags:
+              appDetails.genres?.map((genre: any) => genre.description) || [],
+            releaseDate: appDetails.release_date?.date || "",
+            developer: appDetails.developers?.join(", ") || "",
+            publisher: appDetails.publishers?.join(", ") || "",
+            images: [
+              appDetails.header_image || "",
+              ...(appDetails.screenshots
+                ?.slice(0, 4)
+                .map((s: any) => s.path_full) || []),
+            ].filter(Boolean),
+          };
 
-        if (steamProfile.title) {
           steamMap.set(appId, steamProfile);
         }
 
         // Rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`Error scraping Steam profile for ${url}:`, error);
+        console.error(`Error fetching Steam profile for ${url}:`, error);
       }
     }
   }
@@ -138,8 +124,8 @@ const enrichTweets = async (
 
   console.log(`Found ${steamUrls.length} Steam URLs`);
 
-  // Scrape Steam profiles
-  const steamProfiles = await scrapeSteamProfiles(steamUrls);
+  // Fetch Steam profiles via API
+  const steamProfiles = await fetchSteamProfiles(steamUrls);
 
   // Enrich tweets with Steam data
   const enrichedTweets: EnrichedTweet[] = tweets.map((tweet) => {

@@ -29,11 +29,21 @@ interface EnrichedTweet {
     publisher: string;
     images: string[];
   }>;
+  // Include all original tweet data
+  text?: string;
+  fullText?: string;
+  createdAt?: string;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  url?: string;
+  extendedEntities?: any;
+  isQuote?: boolean;
+  quote?: any;
 }
 
-interface TweetMetadata {
-  id: string;
-  metadata: {
+interface TweetMetadata extends EnrichedTweet {
+  aiMetadata: {
     summary: string;
     gameTitles: string[];
     genres: string[];
@@ -139,8 +149,8 @@ Generate structured metadata for this tweet about indie games.`,
       });
 
       tweetsWithMetadata.push({
-        id: tweet.id,
-        metadata: result.object.metadata,
+        ...tweet, // Preserve all original tweet data
+        aiMetadata: result.object.metadata,
       });
     } catch (error) {
       console.error(`Error processing tweet ${tweet.id}:`, error);

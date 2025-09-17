@@ -73,7 +73,9 @@ const runPipeline = async () => {
     console.log("   • public/data/gather-results.json");
     console.log("   • public/data/enrich-results.json");
     console.log("   • public/data/metadata-results.json");
-    console.log("   • public/data/embed-results.json");
+    console.log(
+      "   • public/data/embed-results.json (FINAL - Use this for UI)"
+    );
   } catch (error) {
     console.error("\n💥 Pipeline failed:", error);
     process.exit(1);
