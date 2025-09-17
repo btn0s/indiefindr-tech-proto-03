@@ -1,5 +1,4 @@
-import fs from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 import apifyClient from "../apify";
 import dEnv from "../dotenv";
 
@@ -19,7 +18,7 @@ const GATHER_SEARCH_TERMS = [
   //   '"indie game developer"',
   //   '"gamedev"',
 ];
-const GATHER_LIMIT = 10;
+const GATHER_LIMIT = 2;
 
 // Phase 2: Backup search configuration
 const BACKUP_SEARCH_TEMPLATES = [
@@ -30,8 +29,16 @@ const BACKUP_SEARCH_TEMPLATES = [
 ];
 const BACKUP_TWEETS_PER_USER = 20; // Max tweets per user across all search terms
 
-// Output configuration
-export const OUTPUT_FILE = "hunt-results.json";
+// Initialize Supabase with anon key for now
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing Supabase environment variables");
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const input = {
   includeSearchTerms: false,
@@ -282,17 +289,54 @@ const main = async () => {
     console.log(`Unique Steam store links (final): ${allFinalLinks.length}`);
     console.log(`Users searched: ${usersWithoutSteamLinks.size}`);
 
-    // Ensure output directory exists
-    const outputDir = path.join(__dirname, "../../../public/data");
-    const outputFile = path.join(outputDir, OUTPUT_FILE);
+    // Insert Steam store links into database
+    console.log(`\nInserting ${allFinalLinks.length} games into database...`);
 
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+    let inserted = 0;
+    const batchSize = 10;
+
+    for (let i = 0; i < allFinalLinks.length; i += batchSize) {
+      const batch = allFinalLinks.slice(i, i + batchSize);
+
+      const gamesToInsert = batch.map((link) => ({
+        app_id: link.appId,
+        steam_url: link.url,
+        status: "hunted",
+      }));
+
+      // TODO: Consider implementing UPSERT logic to handle existing games gracefully
+      const { data, error } = await supabase
+        .from("games")
+        .insert(gamesToInsert)
+        .select("app_id");
+
+      if (error) {
+        if (error.code === "23505") {
+          console.log(
+            `⚠️  Batch ${
+              Math.floor(i / batchSize) + 1
+            }: Games already exist, skipping...`
+          );
+        } else {
+          console.error(
+            `Error inserting batch ${Math.floor(i / batchSize) + 1}:`,
+            error
+          );
+        }
+        continue;
+      }
+
+      inserted += data?.length || 0;
+      console.log(
+        `Inserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(
+          allFinalLinks.length / batchSize
+        )} (${inserted}/${allFinalLinks.length} games)`
+      );
     }
 
-    // Write Steam store links to file
-    fs.writeFileSync(outputFile, JSON.stringify(allFinalLinks, null, 2));
-    console.log(`Steam store links saved to: ${outputFile}`);
+    console.log(
+      `✅ Successfully inserted ${inserted} games into database with status 'hunted'`
+    );
   } catch (error) {
     console.error("Error during Steam link hunt:", error);
     process.exit(1);

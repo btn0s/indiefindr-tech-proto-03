@@ -3,19 +3,19 @@ import path from "path";
 
 const STEPS = [
   {
-    name: "Enrich",
-    script: "1-enrich.ts",
-    description: "Enriching tweets with Steam game data via Cheerio",
+    name: "Hunt",
+    script: "0-hunt.ts",
+    description: "Hunt for Steam links and insert into database",
   },
   {
-    name: "Generate Metadata",
-    script: "2-generate-metadata.ts",
-    description: "Generating AI metadata for tweets and games",
+    name: "Enhance",
+    script: "1-enhance.ts",
+    description: "Enhance games with Steam API data",
   },
   {
-    name: "Embed & Save",
-    script: "3-embed-and-save.ts",
-    description: "Creating vector embeddings and saving results",
+    name: "Process",
+    script: "2-process.ts",
+    description: "Generate embeddings and semantic descriptions",
   },
 ];
 
@@ -64,12 +64,9 @@ const runPipeline = async () => {
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.log("🎉 Pipeline completed successfully!");
     console.log(`⏱️  Total time: ${duration} seconds`);
-    console.log("\n📁 Output files:");
-    console.log("   • public/data/enrich-results.json");
-    console.log("   • public/data/metadata-results.json");
-    console.log(
-      "   • public/data/embed-results.json (FINAL - Use this for UI)"
-    );
+    console.log("\n📊 Database status:");
+    console.log("   • Games hunted, enhanced, and processed");
+    console.log("   • Ready for new search system!");
   } catch (error) {
     console.error("\n💥 Pipeline failed:", error);
     process.exit(1);

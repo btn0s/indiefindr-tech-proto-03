@@ -1,5 +1,4 @@
-import fs from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 import dEnv from "../dotenv";
 
 dEnv();
@@ -11,9 +10,16 @@ const STEAM_API_BASE_URL = "https://store.steampowered.com/api/appdetails";
 const REQUEST_DELAY_MS = 1000; // Delay between API requests to avoid rate limiting
 const MAX_RETRIES = 3;
 
-// File paths
-const INPUT_FILE = "hunt-results.json";
-const OUTPUT_FILE = "enhanced-results.json";
+// Initialize Supabase with anon key
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing Supabase environment variables");
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ========== INTERFACES ==========
 
@@ -167,105 +173,117 @@ async function fetchSteamAppDetails(
 
 const main = async () => {
   try {
-    console.log("Starting Steam link enhancement...");
+    console.log("Starting Steam link enhancement from database...");
 
-    // Read hunt results
-    const inputPath = path.join(__dirname, "../../../public/data", INPUT_FILE);
-    const outputPath = path.join(
-      __dirname,
-      "../../../public/data",
-      OUTPUT_FILE
-    );
+    // Get games with status 'hunted'
+    const { data: huntedGames, error: fetchError } = await supabase
+      .from("games")
+      .select("app_id, steam_url")
+      .eq("status", "hunted");
 
-    if (!fs.existsSync(inputPath)) {
-      console.error(`Input file not found: ${inputPath}`);
+    if (fetchError) {
+      console.error("Error fetching hunted games:", fetchError);
       process.exit(1);
     }
 
-    const huntResults: SteamStoreLink[] = JSON.parse(
-      fs.readFileSync(inputPath, "utf8")
-    );
-    console.log(`Loaded ${huntResults.length} Steam links from hunt results`);
+    console.log(`Found ${huntedGames?.length || 0} games to enhance`);
 
-    // Get unique app IDs
-    const uniqueAppIds = [...new Set(huntResults.map((link) => link.appId))];
-    console.log(`Found ${uniqueAppIds.length} unique Steam app IDs`);
-
-    // Enhance each link with Steam API data
-    const enhancedResults: EnhancedSteamLink[] = [];
-    let processed = 0;
-
-    for (const link of huntResults) {
+    if (!huntedGames || huntedGames.length === 0) {
       console.log(
-        `\n[${++processed}/${huntResults.length}] Processing app ${
-          link.appId
+        "✅ No games found with status 'hunted' - all games already enhanced!"
+      );
+      return;
+    }
+
+    let processed = 0;
+    let enhanced = 0;
+    let failed = 0;
+
+    for (const game of huntedGames) {
+      console.log(
+        `\n[${++processed}/${huntedGames.length}] Processing app ${
+          game.app_id
         }...`
       );
 
-      const enhancedLink: EnhancedSteamLink = {
-        ...link,
-        enhancedAt: new Date().toISOString(),
-      };
-
       try {
-        const steamDetails = await fetchSteamAppDetails(link.appId);
+        const steamDetails = await fetchSteamAppDetails(game.app_id);
 
         if (steamDetails.success && steamDetails.data) {
-          enhancedLink.steamDetails = steamDetails.data;
-          console.log(
-            `✓ Enhanced: ${steamDetails.data.name} (${steamDetails.data.type})`
-          );
+          // Update game with steam data and set status to 'enhanced'
+          const { error: updateError } = await supabase
+            .from("games")
+            .update({
+              steam_data: steamDetails.data,
+              status: "enhanced",
+            })
+            .eq("app_id", game.app_id);
+
+          if (updateError) {
+            console.error(`Failed to update game ${game.app_id}:`, updateError);
+            failed++;
+          } else {
+            enhanced++;
+            console.log(
+              `✓ Enhanced: ${steamDetails.data.name} (${steamDetails.data.type})`
+            );
+          }
         } else {
-          enhancedLink.enhancementError = "Steam API returned success: false";
+          // Mark as failed
+          const { error: updateError } = await supabase
+            .from("games")
+            .update({
+              status: "failed",
+              error_message: "Steam API returned success: false",
+            })
+            .eq("app_id", game.app_id);
+
+          if (updateError) {
+            console.error(
+              `Failed to update failed game ${game.app_id}:`,
+              updateError
+            );
+          }
+          failed++;
           console.log(
-            `⚠️  Failed to enhance app ${link.appId}: API returned success: false`
+            `⚠️  Failed to enhance app ${game.app_id}: API returned success: false`
           );
         }
       } catch (error) {
-        enhancedLink.enhancementError =
+        // Mark as failed with error message
+        const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
-        console.log(`❌ Error enhancing app ${link.appId}:`, error);
+        const { error: updateError } = await supabase
+          .from("games")
+          .update({
+            status: "failed",
+            error_message: errorMessage,
+          })
+          .eq("app_id", game.app_id);
+
+        if (updateError) {
+          console.error(
+            `Failed to update failed game ${game.app_id}:`,
+            updateError
+          );
+        }
+        failed++;
+        console.log(`❌ Error enhancing app ${game.app_id}:`, error);
       }
 
-      enhancedResults.push(enhancedLink);
-
       // Rate limiting delay (except for last item)
-      if (processed < huntResults.length) {
+      if (processed < huntedGames.length) {
         await delay(REQUEST_DELAY_MS);
       }
     }
 
-    // Write enhanced results
-    fs.writeFileSync(outputPath, JSON.stringify(enhancedResults, null, 2));
-
-    // Summary
-    const successCount = enhancedResults.filter(
-      (link) => link.steamDetails
-    ).length;
-    const errorCount = enhancedResults.filter(
-      (link) => link.enhancementError
-    ).length;
-
     console.log(`\n=== ENHANCEMENT SUMMARY ===`);
-    console.log(`Total links processed: ${enhancedResults.length}`);
-    console.log(`Successfully enhanced: ${successCount}`);
-    console.log(`Enhancement errors: ${errorCount}`);
-    console.log(`Enhanced results saved to: ${outputPath}`);
-
-    // Show enhanced games
-    if (successCount > 0) {
-      console.log(`\n=== ENHANCED GAMES ===`);
-      enhancedResults
-        .filter((link) => link.steamDetails)
-        .forEach((link, index) => {
-          const game = link.steamDetails!;
-          console.log(
-            `${index + 1}. ${game.name} (${game.type}) - ${
-              game.developers?.join(", ") || "Unknown developer"
-            }`
-          );
-        });
-    }
+    console.log(`Total games processed: ${processed}`);
+    console.log(`Successfully enhanced: ${enhanced}`);
+    console.log(`Enhancement errors: ${failed}`);
+    console.log(
+      `✅ Games are now ready for processing step (status='enhanced')`
+    );
   } catch (error) {
     console.error("Error during enhancement:", error);
     process.exit(1);
