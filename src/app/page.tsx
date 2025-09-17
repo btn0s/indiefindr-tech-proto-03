@@ -11,15 +11,15 @@ export default async function Home({
   const query = (await searchParams).q;
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">🎮 Indiefindr</h1>
-        <p className="text-gray-600 text-lg mb-6">
-          Discover indie games from Twitter buzz. Try searching for feelings:
-          "warm games to play on the couch", "game night coop", or "meditative
-          puzzle games".
+    <div className="container mx-auto px-6 py-12">
+      <div className="text-center mb-6">
+        <h1 className="text-4xl font-bold">Indiefindr</h1>
+        <p className="text-muted-foreground text-lg mb-6 max-w-lg mx-auto text-balance">
+          Discover your next favorite indie game.
         </p>
-        <SearchBox query={query} />
+        <div className="mx-auto max-w-lg">
+          <SearchBox query={query} />
+        </div>
       </div>
 
       <Suspense fallback={<GameGridSkeleton />} key={query}>
