@@ -29,6 +29,9 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       value: query,
     });
 
+    // Dynamic similarity threshold based on query length
+    const threshold = query.length <= 5 ? 0.15 : 0.25;
+
     // Calculate similarities and filter
     const gamesWithSimilarity = tweets
       .filter((tweet) => tweet.steamProfiles && tweet.steamProfiles.length > 0)
@@ -39,16 +42,23 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
             appId: game.appId,
             title: rawData.name,
             description: rawData.short_description,
-            price: rawData.price_overview?.final_formatted || (rawData.is_free ? "Free" : "N/A"),
+            price:
+              rawData.price_overview?.final_formatted ||
+              (rawData.is_free ? "Free" : "N/A"),
             tags: rawData.genres?.map((g: any) => g.description) || [],
             releaseDate: rawData.release_date?.date || "",
             developer: rawData.developers?.join(", ") || "",
             publisher: rawData.publishers?.join(", ") || "",
             images: [
               rawData.header_image || "",
-              ...(rawData.screenshots?.slice(0, 4).map((s: any) => s.path_full) || []),
+              ...(rawData.screenshots
+                ?.slice(0, 4)
+                .map((s: any) => s.path_full) || []),
             ].filter(Boolean),
-            videos: rawData.movies?.slice(0, 2).map((m: any) => m.mp4?.max || m.mp4) || [],
+            videos:
+              rawData.movies
+                ?.slice(0, 2)
+                .map((m: any) => m.mp4?.max || m.mp4) || [],
             tweetId: tweet.id,
             tweetAuthor: tweet.author.userName,
             tweetText: tweet.fullText || tweet.text,
@@ -58,9 +68,17 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
           };
         })
       )
-      .filter((item) => item.similarity > 0.3) // Similarity threshold
-      .sort((a, b) => b.similarity - a.similarity)
+      .filter((item) => item.similarity && item.similarity > threshold)
+      .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
       .slice(0, 20); // Limit results
+
+    // Debug logging
+    console.log(`Search query: "${query}"`);
+    console.log(`Total results after filtering: ${gamesWithSimilarity.length}`);
+    if (gamesWithSimilarity.length > 0) {
+      console.log(`Top similarity score: ${gamesWithSimilarity[0].similarity}`);
+      console.log(`Top result title: ${gamesWithSimilarity[0].title}`);
+    }
 
     return gamesWithSimilarity;
   } catch (error) {
@@ -82,16 +100,23 @@ export const getAllGames = async (): Promise<GameData[]> => {
             appId: game.appId,
             title: rawData.name,
             description: rawData.short_description,
-            price: rawData.price_overview?.final_formatted || (rawData.is_free ? "Free" : "N/A"),
+            price:
+              rawData.price_overview?.final_formatted ||
+              (rawData.is_free ? "Free" : "N/A"),
             tags: rawData.genres?.map((g: any) => g.description) || [],
             releaseDate: rawData.release_date?.date || "",
             developer: rawData.developers?.join(", ") || "",
             publisher: rawData.publishers?.join(", ") || "",
             images: [
               rawData.header_image || "",
-              ...(rawData.screenshots?.slice(0, 4).map((s: any) => s.path_full) || []),
+              ...(rawData.screenshots
+                ?.slice(0, 4)
+                .map((s: any) => s.path_full) || []),
             ].filter(Boolean),
-            videos: rawData.movies?.slice(0, 2).map((m: any) => m.mp4?.max || m.mp4) || [],
+            videos:
+              rawData.movies
+                ?.slice(0, 2)
+                .map((m: any) => m.mp4?.max || m.mp4) || [],
             tweetId: tweet.id,
             tweetAuthor: tweet.author.userName,
             tweetText: tweet.fullText || tweet.text,
