@@ -51,7 +51,18 @@ export class DataLoader {
         throw new Error("Unable to load game data from database");
       }
 
-      const processedGames = games || [];
+      // Parse embeddings from string to array
+      const processedGames = (games || []).map((game: any) => {
+        return {
+          app_id: game.app_id,
+          semantic_description: game.semantic_description,
+          steam_data: game.steam_data,
+          embedding:
+            typeof game.embedding === "string"
+              ? JSON.parse(game.embedding)
+              : game.embedding,
+        };
+      });
 
       // Cache the data
       await searchCache.set(this.CACHE_KEY, processedGames, this.CACHE_TTL);

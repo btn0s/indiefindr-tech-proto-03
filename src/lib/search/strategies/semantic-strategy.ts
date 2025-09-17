@@ -105,11 +105,11 @@ Examples:
 
   private getThreshold(query: string, intent: SearchIntent): number {
     // Lower threshold for short queries to be more permissive
-    if (query.length <= 5) return 0.15;
+    if (query.length <= 5) return 0.3;
 
     // Higher threshold for mood-based searches for better precision
-    if (intent.type === "mood") return 0.3;
+    if (intent.type === "mood") return 0.4;
 
-    return 0.25;
+    return 0.35; // Reasonable threshold for semantic relevance
   }
 }
