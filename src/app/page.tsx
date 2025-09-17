@@ -15,8 +15,9 @@ export default async function Home({
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">🎮 Indiefindr</h1>
         <p className="text-gray-600 text-lg mb-6">
-          Discover indie games from Twitter buzz. Browse all games below or
-          search semantically.
+          Discover indie games from Twitter buzz. Try searching for feelings:
+          "warm games to play on the couch", "game night coop", or "meditative
+          puzzle games".
         </p>
         <SearchBox query={query} />
       </div>

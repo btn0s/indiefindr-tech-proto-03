@@ -43,6 +43,16 @@ interface FinalTweet {
     keyFeatures: string[];
     targetAudience: string;
     releaseStatus: string;
+    // Enhanced fields for natural language search
+    mood: string[];
+    vibe: string[];
+    atmosphere: string[];
+    playStyle: string[];
+    socialContext: string[];
+    difficultyLevel: string;
+    emotionalTone: string[];
+    settingAesthetics: string[];
+    gameplayFeel: string[];
   };
   embedding: number[];
 }

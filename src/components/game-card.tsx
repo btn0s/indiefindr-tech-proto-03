@@ -21,6 +21,16 @@ interface Game {
     keyFeatures: string[];
     targetAudience: string;
     releaseStatus: string;
+    // Enhanced fields for natural language search
+    mood: string[];
+    vibe: string[];
+    atmosphere: string[];
+    playStyle: string[];
+    socialContext: string[];
+    difficultyLevel: string;
+    emotionalTone: string[];
+    settingAesthetics: string[];
+    gameplayFeel: string[];
   };
   similarity: number;
 }
@@ -79,10 +89,41 @@ export const GameCard = ({ game }: { game: Game }) => {
           {game.releaseDate && <div>Release: {game.releaseDate}</div>}
         </div>
 
-        {/* AI Summary */}
+        {/* AI Summary and Vibes */}
         {game.aiMetadata && (
-          <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+          <div className="mt-3 p-2 bg-gray-50 rounded text-xs space-y-2">
             <p className="text-gray-600 italic">"{game.aiMetadata.summary}"</p>
+
+            {/* Mood/Vibe tags */}
+            {(game.aiMetadata.vibe?.length > 0 ||
+              game.aiMetadata.mood?.length > 0) && (
+              <div className="flex flex-wrap gap-1">
+                {game.aiMetadata.vibe?.slice(0, 2).map((vibe, index) => (
+                  <span
+                    key={index}
+                    className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs"
+                  >
+                    {vibe}
+                  </span>
+                ))}
+                {game.aiMetadata.mood?.slice(0, 1).map((mood, index) => (
+                  <span
+                    key={index}
+                    className="bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs"
+                  >
+                    {mood}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Social Context */}
+            {game.aiMetadata.socialContext?.length > 0 && (
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">Perfect for:</span>{" "}
+                {game.aiMetadata.socialContext.slice(0, 2).join(", ")}
+              </div>
+            )}
           </div>
         )}
 

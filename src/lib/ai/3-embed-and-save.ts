@@ -45,6 +45,16 @@ interface TweetWithMetadata {
     keyFeatures: string[];
     targetAudience: string;
     releaseStatus: string;
+    // Enhanced fields for natural language search
+    mood: string[];
+    vibe: string[];
+    atmosphere: string[];
+    playStyle: string[];
+    socialContext: string[];
+    difficultyLevel: string;
+    emotionalTone: string[];
+    settingAesthetics: string[];
+    gameplayFeel: string[];
   };
 }
 
@@ -95,7 +105,7 @@ async function main() {
     );
 
     try {
-      // Create a comprehensive text for embedding
+      // Create a comprehensive text for embedding that includes experiential metadata
       const embeddingText = [
         tweet.aiMetadata.summary,
         `Games: ${tweet.aiMetadata.gameTitles.join(", ")}`,
@@ -103,7 +113,19 @@ async function main() {
         `Features: ${tweet.aiMetadata.keyFeatures.join(", ")}`,
         `Target: ${tweet.aiMetadata.targetAudience}`,
         `Status: ${tweet.aiMetadata.releaseStatus}`,
-      ].join("\n");
+        // Enhanced experiential metadata for better semantic search
+        `Mood: ${tweet.aiMetadata.mood?.join(", ") || ""}`,
+        `Vibe: ${tweet.aiMetadata.vibe?.join(", ") || ""}`,
+        `Atmosphere: ${tweet.aiMetadata.atmosphere?.join(", ") || ""}`,
+        `Play Style: ${tweet.aiMetadata.playStyle?.join(", ") || ""}`,
+        `Social Context: ${tweet.aiMetadata.socialContext?.join(", ") || ""}`,
+        `Difficulty: ${tweet.aiMetadata.difficultyLevel || ""}`,
+        `Emotional Tone: ${tweet.aiMetadata.emotionalTone?.join(", ") || ""}`,
+        `Aesthetics: ${tweet.aiMetadata.settingAesthetics?.join(", ") || ""}`,
+        `Gameplay Feel: ${tweet.aiMetadata.gameplayFeel?.join(", ") || ""}`,
+      ]
+        .filter((line) => line.trim() && !line.endsWith(": "))
+        .join("\n");
 
       // Generate embedding
       const { embedding } = await embed({

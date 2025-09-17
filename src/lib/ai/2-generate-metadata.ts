@@ -50,6 +50,16 @@ interface TweetMetadata extends EnrichedTweet {
     keyFeatures: string[];
     targetAudience: string;
     releaseStatus: string;
+    // Enhanced fields for natural language search
+    mood: string[];
+    vibe: string[];
+    atmosphere: string[];
+    playStyle: string[];
+    socialContext: string[];
+    difficultyLevel: string;
+    emotionalTone: string[];
+    settingAesthetics: string[];
+    gameplayFeel: string[];
   };
 }
 
@@ -134,16 +144,85 @@ async function main() {
               .describe(
                 "Release status (e.g., 'Upcoming', 'Early Access', 'Released')"
               ),
+            // Enhanced fields for natural language search
+            mood: z
+              .array(z.string())
+              .describe(
+                "Emotional moods the game evokes (e.g., 'relaxing', 'tense', 'melancholic', 'uplifting', 'mysterious')"
+              ),
+            vibe: z
+              .array(z.string())
+              .describe(
+                "Overall vibes and feelings (e.g., 'cozy', 'nostalgic', 'epic', 'intimate', 'chaotic', 'peaceful')"
+              ),
+            atmosphere: z
+              .array(z.string())
+              .describe(
+                "Environmental/setting atmosphere (e.g., 'warm', 'dark', 'whimsical', 'gritty', 'magical', 'cyberpunk')"
+              ),
+            playStyle: z
+              .array(z.string())
+              .describe(
+                "How the game is meant to be played (e.g., 'casual', 'hardcore', 'bite-sized sessions', 'marathon sessions', 'mindful')"
+              ),
+            socialContext: z
+              .array(z.string())
+              .describe(
+                "Social play context (e.g., 'solo experience', 'couch co-op', 'game night', 'party game', 'online multiplayer', 'family-friendly')"
+              ),
+            difficultyLevel: z
+              .string()
+              .describe(
+                "Difficulty level (e.g., 'accessible', 'moderate', 'challenging', 'punishing')"
+              ),
+            emotionalTone: z
+              .array(z.string())
+              .describe(
+                "Emotional experiences (e.g., 'heartwarming', 'thought-provoking', 'adrenaline-pumping', 'zen', 'bittersweet')"
+              ),
+            settingAesthetics: z
+              .array(z.string())
+              .describe(
+                "Visual and aesthetic qualities (e.g., 'pixel art', 'hand-drawn', 'minimalist', 'lush', 'colorful', 'monochrome')"
+              ),
+            gameplayFeel: z
+              .array(z.string())
+              .describe(
+                "Physical/tactile gameplay sensations (e.g., 'smooth', 'responsive', 'weighty', 'floaty', 'precise', 'fluid')"
+              ),
           }),
         }),
         messages: [
           {
             role: "user",
-            content: `Analyze this tweet about indie games and generate metadata. Here are the Steam game details:
+            content: `<role>
+You are an expert indie game curator who specializes in understanding the emotional and experiential qualities of games. You help people find games based on feelings, moods, and experiences they want to have.
+</role>
 
+<task>
+Analyze this tweet about indie games and generate rich experiential metadata. Focus on the FEELINGS, VIBES, and EXPERIENCES these games offer, not just technical features.
+</task>
+
+<game_details>
 ${gamesContext}
+</game_details>
 
-Generate structured metadata for this tweet about indie games.`,
+<instructions>
+- Think beyond genres - focus on what it FEELS like to play these games
+- Consider the emotional journey and atmosphere
+- Identify social contexts (couch co-op, solo meditation, party games, etc.)
+- Capture aesthetic and sensory qualities
+- Use evocative language that helps people imagine the experience
+- For queries like "warm games to play on the couch" or "game night coop", your metadata should enable semantic matching
+
+Examples of good experiential descriptors:
+- Mood: "meditative", "heart-pounding", "melancholic", "joyful"
+- Vibe: "cozy blanket fort", "late-night diner", "summer afternoon", "rainy day"
+- Atmosphere: "warm candlelight", "neon-soaked streets", "misty forest"
+- Social: "snuggled up together", "competitive banter", "shared discovery"
+</instructions>
+
+Generate comprehensive experiential metadata for this indie game content.`,
           },
         ],
       });
