@@ -1,17 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
 import { GameData } from "@/lib/types";
 
 export const GameCard = ({ game }: { game: GameData }) => {
-
-
   return (
-    <div className="group">
-      <div
-        className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]`}
-      >
+    <Link href={`/game/${game.appId}`} className="group block">
+      <div className="bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]">
         {game.images[0] ? (
           <Image
             src={game.images[0]}
@@ -27,27 +23,19 @@ export const GameCard = ({ game }: { game: GameData }) => {
           </div>
         )}
       </div>
-      <div className="p-2">
-        <div className="flex items-center justify-between mb-1">
-          <h2
-            className="text-lg font-semibold truncate flex-1"
-            title={game.title}
-          >
-            {game.title}
-          </h2>
-          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium ml-2">
-            {game.price}
-          </span>
+
+      <div className="p-2 flex flex-col">
+        <h2 className="text-lg font-semibold truncate" title={game.title}>
+          {game.title}
+        </h2>
+
+        <div className="text-xs text-muted-foreground mb-2">
+          <div>by {game.developer}</div>
+          {/* {game.releaseDate && <div>Release: {game.releaseDate}</div>} */}
         </div>
 
-        {game.description && (
-          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-            {game.description}
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-1 mt-2">
-          {game.tags.slice(0, 3).map((tag, tagIndex) => (
+        <div className="flex flex-wrap gap-1">
+          {game.tags.slice(0, 4).map((tag, tagIndex) => (
             <span
               key={tagIndex}
               className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
@@ -56,34 +44,7 @@ export const GameCard = ({ game }: { game: GameData }) => {
             </span>
           ))}
         </div>
-
-        <div className="mt-2 text-xs text-gray-400 space-y-1">
-          <div>by {game.developer}</div>
-          {game.releaseDate && <div>Release: {game.releaseDate}</div>}
-        </div>
-
-        {/* Similarity score for search results */}
-        {game.similarity !== undefined && game.similarity < 1 && (
-          <div className="mt-2 text-xs text-blue-500">
-            Match: {Math.round(game.similarity * 100)}%
-          </div>
-        )}
-
-        {/* Tweet attribution */}
-        <div className="mt-2 text-xs text-gray-400">
-          <span>Found by @{game.tweetAuthor}</span>
-          {game.tweetUrl && (
-            <a
-              href={game.tweetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-2 text-blue-500 hover:underline"
-            >
-              View Tweet →
-            </a>
-          )}
-        </div>
       </div>
-    </div>
+    </Link>
   );
 };
