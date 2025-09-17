@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import apifyClient from "../apify";
+import dEnv from "../dotenv";
+
+dEnv();
 
 // ========== CONFIGURATION CONSTANTS ==========
 

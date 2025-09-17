@@ -1,6 +1,12 @@
 import path from "path";
 import fs from "fs";
-import { EnrichedTweet } from "@/lib/types";
+interface ProcessedGame {
+  appId: string;
+  name: string;
+  semantic_description: string;
+  embedding: number[];
+  steam_data: any;
+}
 import { searchCache } from "./cache";
 
 export class DataLoader {
@@ -15,9 +21,9 @@ export class DataLoader {
     return DataLoader.instance;
   }
 
-  async loadEmbeddedData(): Promise<EnrichedTweet[]> {
+  async loadEmbeddedData(): Promise<ProcessedGame[]> {
     // Check cache first
-    const cached = await searchCache.get<EnrichedTweet[]>(this.CACHE_KEY);
+    const cached = await searchCache.get<ProcessedGame[]>(this.CACHE_KEY);
     if (cached) {
       return cached;
     }
@@ -28,12 +34,12 @@ export class DataLoader {
         "public/data/embed-results.json"
       );
       const data = await fs.promises.readFile(filePath, "utf-8");
-      const tweets: EnrichedTweet[] = JSON.parse(data);
+      const games: ProcessedGame[] = JSON.parse(data);
 
       // Cache the data
-      await searchCache.set(this.CACHE_KEY, tweets, this.CACHE_TTL);
+      await searchCache.set(this.CACHE_KEY, games, this.CACHE_TTL);
 
-      return tweets;
+      return games;
     } catch (error) {
       console.error("Failed to load embedded data:", error);
       throw new Error("Unable to load game data");
