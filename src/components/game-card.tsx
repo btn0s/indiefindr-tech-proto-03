@@ -65,9 +65,7 @@ export const GameCard = ({ game }: { game: Game }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 ${
-          isHovered && hasVideo ? "aspect-video" : "aspect-[460/215]"
-        }`}
+        className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]`}
       >
         {isHovered && hasVideo ? (
           <video

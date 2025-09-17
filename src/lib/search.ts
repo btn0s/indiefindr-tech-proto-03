@@ -1,4 +1,5 @@
-import { embed } from "ai";
+import { embed, generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 import fs from "fs";
 import path from "path";
 import { EnrichedTweet, GameData } from "./types";
@@ -24,14 +25,44 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
     const tweets = await loadEmbeddedData();
 
     // Generate embedding for the search query
-    const { embedding: queryEmbedding } = await embed({
+    const { embedding: baseEmbedding } = await embed({
       model: embeddingModel,
       value: query,
     });
 
+    // HyDE-style query expansion for short/ambiguous queries
+    // For very short queries (<= 2 words), generate a brief descriptive expansion
+    let queryEmbedding = baseEmbedding;
+    const tokenCount = query.trim().split(/\s+/).filter(Boolean).length;
+    if (tokenCount <= 2) {
+      try {
+        const { text: hypothetical } = await generateText({
+          model: "openai/gpt-4o-mini",
+          system:
+            "Rewrite the user query into a concise description of the intended indie game topic for semantic search. Keep it under 12 words.",
+          prompt: `User query: "${query}"\nReturn a short description that captures the intended topic and related concepts (e.g., for \"space\": space exploration, galaxy, sci-fi, spaceship, outer space).`,
+        });
+
+        const { embedding: hydeEmbedding } = await embed({
+          model: embeddingModel,
+          value: hypothetical.replaceAll("\n", " "),
+        });
+
+        // Average base and HyDE embeddings to stabilize intent
+        queryEmbedding = baseEmbedding.map(
+          (v, i) => (v + hydeEmbedding[i]) / 2
+        );
+      } catch {
+        // Fall back to base embedding if HyDE expansion fails
+        queryEmbedding = baseEmbedding;
+      }
+    }
+
     // Dynamic similarity threshold based on query length
-    // Lower thresholds to rely purely on semantic similarity from embeddings
-    const threshold = query.length <= 5 ? 0.15 : 0.18;
+    // Lower thresholds to match semantic image search approach (0.28)
+    const threshold = query.length <= 5 ? 0.22 : 0.25;
+
+    // No hard-coded genre validation - let embeddings work naturally
 
     // Calculate similarities and filter
     const gamesWithSimilarity = tweets

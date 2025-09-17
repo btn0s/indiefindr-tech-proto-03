@@ -12,7 +12,7 @@ export default async function Home({
 
   return (
     <div className="container mx-auto px-6 py-12">
-      <div className="text-center mb-6">
+      <div className="text-center">
         <h1 className="text-4xl font-bold">Indiefindr</h1>
         <p className="text-muted-foreground text-lg mb-6 max-w-lg mx-auto text-balance">
           Discover your next favorite indie game.
