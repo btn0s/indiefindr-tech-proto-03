@@ -27,6 +27,14 @@ interface SteamProfile {
   developer: string;
   publisher: string;
   images: string[];
+  // Enhanced fields for vibe analysis
+  categories: string[];
+  platforms: string[];
+  metacritic_score?: number;
+  content_descriptors?: string[];
+  supported_languages?: string[];
+  full_description?: string;
+  website?: string;
 }
 
 interface EnrichedTweet extends TwitterTweet {
@@ -98,6 +106,25 @@ const fetchSteamProfiles = async (
                 ?.slice(0, 4)
                 .map((s: any) => s.path_full) || []),
             ].filter(Boolean),
+            // Enhanced fields for vibe analysis
+            categories:
+              appDetails.categories?.map((cat: any) => cat.description) || [],
+            platforms: Object.keys(appDetails.platforms || {}).filter(
+              (platform) => appDetails.platforms[platform]
+            ),
+            metacritic_score: appDetails.metacritic?.score,
+            content_descriptors:
+              appDetails.content_descriptors?.ids
+                ?.map(
+                  (id: string) =>
+                    appDetails.content_descriptors.descriptors[id]?.name
+                )
+                .filter(Boolean) || [],
+            supported_languages: Object.keys(
+              appDetails.supported_languages || {}
+            ).filter((lang) => appDetails.supported_languages[lang]),
+            full_description: appDetails.detailed_description || "",
+            website: appDetails.website || "",
           };
 
           steamMap.set(appId, steamProfile);

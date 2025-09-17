@@ -31,6 +31,21 @@ interface Game {
     emotionalTone: string[];
     settingAesthetics: string[];
     gameplayFeel: string[];
+    // First-principles game attributes
+    playModes: string[];
+    coreMechanics: string[];
+    cameraPerspective: string[];
+    artStyle: string[];
+    visualStyle: string[];
+    controlScheme: string[];
+    sessionLength: string[];
+    complexity: string;
+    multiplayerFeatures: string[];
+    contentRating: string;
+    platformSupport: string[];
+    languageSupport: string[];
+    accessibility: string[];
+    performance: string[];
   };
   similarity: number;
 }
@@ -122,6 +137,22 @@ export const GameCard = ({ game }: { game: Game }) => {
               <div className="text-xs text-gray-500">
                 <span className="font-medium">Perfect for:</span>{" "}
                 {game.aiMetadata.socialContext.slice(0, 2).join(", ")}
+              </div>
+            )}
+
+            {/* Play Modes */}
+            {game.aiMetadata.playModes?.length > 0 && (
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">Play modes:</span>{" "}
+                {game.aiMetadata.playModes.slice(0, 2).join(", ")}
+              </div>
+            )}
+
+            {/* Art Style */}
+            {game.aiMetadata.artStyle?.length > 0 && (
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">Style:</span>{" "}
+                {game.aiMetadata.artStyle.slice(0, 2).join(", ")}
               </div>
             )}
           </div>

@@ -28,6 +28,14 @@ interface EnrichedTweet {
     developer: string;
     publisher: string;
     images: string[];
+    // Enhanced fields for vibe analysis
+    categories: string[];
+    platforms: string[];
+    metacritic_score?: number;
+    content_descriptors?: string[];
+    supported_languages?: string[];
+    full_description?: string;
+    website?: string;
   }>;
   // Include all original tweet data
   text?: string;
@@ -60,6 +68,21 @@ interface TweetMetadata extends EnrichedTweet {
     emotionalTone: string[];
     settingAesthetics: string[];
     gameplayFeel: string[];
+    // First-principles game attributes
+    playModes: string[];
+    coreMechanics: string[];
+    cameraPerspective: string[];
+    artStyle: string[];
+    visualStyle: string[];
+    controlScheme: string[];
+    sessionLength: string[];
+    complexity: string;
+    multiplayerFeatures: string[];
+    contentRating: string;
+    platformSupport: string[];
+    languageSupport: string[];
+    accessibility: string[];
+    performance: string[];
   };
 }
 
@@ -112,12 +135,22 @@ async function main() {
     const steamGames = tweet.steamProfiles!;
     const gamesContext = steamGames
       .map(
-        (game) =>
-          `Game: ${game.title}\nDescription: ${
-            game.description
-          }\nTags: ${game.tags.join(", ")}\nDeveloper: ${
-            game.developer
-          }\nPublisher: ${game.publisher}`
+        (game) => `
+Game: ${game.title}
+Description: ${game.description}
+Full Description: ${game.full_description || game.description}
+Tags: ${game.tags.join(", ")}
+Categories: ${game.categories.join(", ")}
+Platforms: ${game.platforms.join(", ")}
+Developer: ${game.developer}
+Publisher: ${game.publisher}
+Price: ${game.price}
+Release Date: ${game.releaseDate}
+Metacritic Score: ${game.metacritic_score || "N/A"}
+Content Descriptors: ${game.content_descriptors?.join(", ") || "None"}
+Supported Languages: ${game.supported_languages?.join(", ") || "N/A"}
+Website: ${game.website || "N/A"}
+Images: ${game.images.length} screenshots available`
       )
       .join("\n\n");
 
@@ -190,6 +223,77 @@ async function main() {
               .describe(
                 "Physical/tactile gameplay sensations (e.g., 'smooth', 'responsive', 'weighty', 'floaty', 'precise', 'fluid')"
               ),
+            // First-principles game attributes
+            playModes: z
+              .array(z.string())
+              .describe(
+                "Play modes available (e.g., 'single-player', 'local co-op', 'online multiplayer', 'split-screen', 'couch co-op')"
+              ),
+            coreMechanics: z
+              .array(z.string())
+              .describe(
+                "Core gameplay mechanics (e.g., 'platforming', 'puzzle-solving', 'resource management', 'combat', 'exploration', 'crafting')"
+              ),
+            cameraPerspective: z
+              .array(z.string())
+              .describe(
+                "Camera/view perspective (e.g., 'first-person', 'third-person', 'top-down', 'side-scrolling', 'isometric', '2D platformer')"
+              ),
+            artStyle: z
+              .array(z.string())
+              .describe(
+                "Artistic style and aesthetics (e.g., 'pixel art', 'hand-drawn', '3D realistic', 'low-poly', 'retro', 'anime', 'cel-shaded')"
+              ),
+            visualStyle: z
+              .array(z.string())
+              .describe(
+                "Visual presentation style (e.g., 'dark and moody', 'bright and colorful', 'minimalist', 'detailed', 'stylized', 'photorealistic')"
+              ),
+            controlScheme: z
+              .array(z.string())
+              .describe(
+                "Control input methods (e.g., 'keyboard and mouse', 'gamepad', 'touch', 'motion controls', 'point and click')"
+              ),
+            sessionLength: z
+              .array(z.string())
+              .describe(
+                "Typical session duration (e.g., 'quick sessions', 'long-form', 'endless', 'campaign-based', 'bite-sized')"
+              ),
+            complexity: z
+              .string()
+              .describe(
+                "Overall complexity level (e.g., 'simple and accessible', 'moderate depth', 'deep systems', 'hardcore simulation')"
+              ),
+            multiplayerFeatures: z
+              .array(z.string())
+              .describe(
+                "Multiplayer functionality (e.g., 'cooperative', 'competitive', 'asymmetric', 'team-based', 'versus mode')"
+              ),
+            contentRating: z
+              .string()
+              .describe(
+                "Content rating and maturity (e.g., 'family-friendly', 'teen', 'mature', 'violence', 'language', 'sexual content')"
+              ),
+            platformSupport: z
+              .array(z.string())
+              .describe(
+                "Supported platforms (e.g., 'PC', 'Mac', 'Linux', 'Steam Deck', 'VR', 'mobile')"
+              ),
+            languageSupport: z
+              .array(z.string())
+              .describe(
+                "Supported languages (e.g., 'English', 'Spanish', 'French', 'Japanese', 'Chinese', 'Russian')"
+              ),
+            accessibility: z
+              .array(z.string())
+              .describe(
+                "Accessibility features (e.g., 'colorblind support', 'subtitles', 'one-handed play', 'adjustable difficulty', 'text size options')"
+              ),
+            performance: z
+              .array(z.string())
+              .describe(
+                "Performance characteristics (e.g., 'lightweight', 'high-end graphics', '60fps', 'ray tracing', 'optimized for low-end PCs')"
+              ),
           }),
         }),
         messages: [
@@ -208,18 +312,30 @@ ${gamesContext}
 </game_details>
 
 <instructions>
-- Think beyond genres - focus on what it FEELS like to play these games
-- Consider the emotional journey and atmosphere
-- Identify social contexts (couch co-op, solo meditation, party games, etc.)
-- Capture aesthetic and sensory qualities
-- Use evocative language that helps people imagine the experience
-- For queries like "warm games to play on the couch" or "game night coop", your metadata should enable semantic matching
+You are analyzing comprehensive Steam game data to create rich, searchable metadata. Use ALL available information to create detailed profiles that enable semantic search for natural language queries.
 
-Examples of good experiential descriptors:
+Key Analysis Areas:
+1. FEELINGS & EXPERIENCES: What does it feel like to play? Emotional journey, atmosphere, social contexts
+2. FIRST-PRINCIPLES ATTRIBUTES: Core mechanics, play modes, camera perspective, art style, controls
+3. TECHNICAL SPECS: Platforms, languages, accessibility, performance characteristics
+4. SOCIAL CONTEXTS: Single-player, couch co-op, online multiplayer, party games, family-friendly
+
+Use the rich Steam data provided:
+- Categories and tags to understand game mechanics and genre
+- Full descriptions to capture atmosphere and tone
+- Metacritic scores for quality indicators
+- Content descriptors for maturity and content warnings
+- Platform support for accessibility and compatibility
+- Language support for global reach
+
+Examples of good descriptors:
 - Mood: "meditative", "heart-pounding", "melancholic", "joyful"
 - Vibe: "cozy blanket fort", "late-night diner", "summer afternoon", "rainy day"
-- Atmosphere: "warm candlelight", "neon-soaked streets", "misty forest"
-- Social: "snuggled up together", "competitive banter", "shared discovery"
+- Play Modes: "couch co-op", "split-screen", "online competitive", "solo adventure"
+- Art Style: "pixel art", "hand-drawn", "low-poly", "retro PSX", "cel-shaded"
+- Mechanics: "puzzle-solving", "platforming", "resource management", "tactical combat"
+
+For queries like "warm games to play on the couch" or "game night coop", your metadata should enable semantic matching through comprehensive experiential and technical analysis.
 </instructions>
 
 Generate comprehensive experiential metadata for this indie game content.`,

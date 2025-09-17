@@ -53,6 +53,21 @@ interface FinalTweet {
     emotionalTone: string[];
     settingAesthetics: string[];
     gameplayFeel: string[];
+    // First-principles game attributes
+    playModes: string[];
+    coreMechanics: string[];
+    cameraPerspective: string[];
+    artStyle: string[];
+    visualStyle: string[];
+    controlScheme: string[];
+    sessionLength: string[];
+    complexity: string;
+    multiplayerFeatures: string[];
+    contentRating: string;
+    platformSupport: string[];
+    languageSupport: string[];
+    accessibility: string[];
+    performance: string[];
   };
   embedding: number[];
 }

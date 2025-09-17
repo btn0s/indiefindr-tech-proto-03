@@ -55,6 +55,21 @@ interface TweetWithMetadata {
     emotionalTone: string[];
     settingAesthetics: string[];
     gameplayFeel: string[];
+    // First-principles game attributes
+    playModes: string[];
+    coreMechanics: string[];
+    cameraPerspective: string[];
+    artStyle: string[];
+    visualStyle: string[];
+    controlScheme: string[];
+    sessionLength: string[];
+    complexity: string;
+    multiplayerFeatures: string[];
+    contentRating: string;
+    platformSupport: string[];
+    languageSupport: string[];
+    accessibility: string[];
+    performance: string[];
   };
 }
 
@@ -123,6 +138,29 @@ async function main() {
         `Emotional Tone: ${tweet.aiMetadata.emotionalTone?.join(", ") || ""}`,
         `Aesthetics: ${tweet.aiMetadata.settingAesthetics?.join(", ") || ""}`,
         `Gameplay Feel: ${tweet.aiMetadata.gameplayFeel?.join(", ") || ""}`,
+        // First-principles game attributes
+        `Play Modes: ${tweet.aiMetadata.playModes?.join(", ") || ""}`,
+        `Core Mechanics: ${tweet.aiMetadata.coreMechanics?.join(", ") || ""}`,
+        `Camera Perspective: ${
+          tweet.aiMetadata.cameraPerspective?.join(", ") || ""
+        }`,
+        `Art Style: ${tweet.aiMetadata.artStyle?.join(", ") || ""}`,
+        `Visual Style: ${tweet.aiMetadata.visualStyle?.join(", ") || ""}`,
+        `Control Scheme: ${tweet.aiMetadata.controlScheme?.join(", ") || ""}`,
+        `Session Length: ${tweet.aiMetadata.sessionLength?.join(", ") || ""}`,
+        `Complexity: ${tweet.aiMetadata.complexity || ""}`,
+        `Multiplayer Features: ${
+          tweet.aiMetadata.multiplayerFeatures?.join(", ") || ""
+        }`,
+        `Content Rating: ${tweet.aiMetadata.contentRating || ""}`,
+        `Platform Support: ${
+          tweet.aiMetadata.platformSupport?.join(", ") || ""
+        }`,
+        `Language Support: ${
+          tweet.aiMetadata.languageSupport?.join(", ") || ""
+        }`,
+        `Accessibility: ${tweet.aiMetadata.accessibility?.join(", ") || ""}`,
+        `Performance: ${tweet.aiMetadata.performance?.join(", ") || ""}`,
       ]
         .filter((line) => line.trim() && !line.endsWith(": "))
         .join("\n");
