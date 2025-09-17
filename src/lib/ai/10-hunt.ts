@@ -2,7 +2,12 @@ import fs from "fs";
 import path from "path";
 import apifyClient from "../apify";
 
+// ========== CONFIGURATION CONSTANTS ==========
+
+// Actor IDs
 const GATHER_ACTOR_ID = "61RPP7dywgiy0JPD0";
+
+// Phase 1: Primary search configuration
 const GATHER_SEARCH_TERMS = [
   '"wishlist on steam"',
   //   '"You\'ll like my indie game if you enjoyed"',
@@ -12,8 +17,17 @@ const GATHER_SEARCH_TERMS = [
   //   '"gamedev"',
 ];
 const GATHER_LIMIT = 10;
-const PROFILE_ACTOR_ID = "V38PZzpEgOfeeWvZY";
-const PROFILE_LIMIT = 10;
+
+// Phase 2: Backup search configuration
+const BACKUP_SEARCH_TEMPLATES = [
+  "store.steampowered", // Direct Steam store mentions
+  "steam", // General Steam mentions
+  '"on steam"', // "on steam" phrase
+  "wishlist", // Wishlist mentions
+];
+const BACKUP_TWEETS_PER_USER = 20; // Max tweets per user across all search terms
+
+// Output configuration
 export const OUTPUT_FILE = "hunt-results.json";
 
 const input = {
@@ -70,50 +84,6 @@ function extractSteamStoreLinks(text: string): SteamStoreLink[] {
   return links;
 }
 
-async function scrapeProfileBio(username: string): Promise<string | null> {
-  try {
-    console.log(`Scraping profile bio for ${username}`);
-
-    const profileInput = {
-      customMapFunction: (object: any) => {
-        return { ...object };
-      },
-      getFollowers: false,
-      getFollowing: false,
-      getRetweeters: false,
-      includeUnavailableUsers: false,
-      maxItems: PROFILE_LIMIT,
-      startUrls: [`https://twitter.com/${username}`],
-    };
-
-    const run = await apifyClient.actor(PROFILE_ACTOR_ID).call(profileInput);
-    const { items } = await apifyClient
-      .dataset(run.defaultDatasetId)
-      .listItems();
-
-    console.log(`Fetched ${items.length} items for profile scrape`);
-
-    if (items.length > 0) {
-      const profileData = items[0] as any;
-      console.log(`Profile data keys:`, Object.keys(profileData));
-
-      if (profileData.description) {
-        console.log(`Profile bio found: "${profileData.description}"`);
-        return profileData.description;
-      } else {
-        console.log(`No description field found in profile data`);
-      }
-    } else {
-      console.log(`No profile data returned`);
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`Error scraping profile for ${username}:`, error);
-    return null;
-  }
-}
-
 const main = async () => {
   try {
     console.log("Starting Steam link hunt with terms:", GATHER_SEARCH_TERMS);
@@ -129,17 +99,19 @@ const main = async () => {
     console.log(`Fetched ${items.length} items`);
 
     const allStoreLinks: SteamStoreLink[] = [];
-    const processedUsers = new Set<string>(); // Avoid duplicate profile scraping
+    const usersWithSteamLinks = new Set<string>(); // Users who already have Steam links
+    const usersWithoutSteamLinks = new Set<string>(); // Users who need backup search
 
     for (const item of items as unknown as TweetData[]) {
       let itemLinkCount = 0;
+      const username = item.author?.userName;
 
       // Extract Steam store links from tweet text
       if (item.text) {
         const tweetLinks = extractSteamStoreLinks(item.text);
         if (tweetLinks.length > 0) {
           console.log(
-            `Found ${tweetLinks.length} Steam links in tweet text from @${item.author?.userName}`
+            `Found ${tweetLinks.length} Steam links in tweet text from @${username}`
           );
           itemLinkCount += tweetLinks.length;
         }
@@ -152,7 +124,7 @@ const main = async () => {
           const expandedLinks = extractSteamStoreLinks(urlEntity.expanded_url);
           if (expandedLinks.length > 0) {
             console.log(
-              `Found ${expandedLinks.length} Steam links in expanded URLs from @${item.author?.userName}: ${urlEntity.expanded_url}`
+              `Found ${expandedLinks.length} Steam links in expanded URLs from @${username}: ${urlEntity.expanded_url}`
             );
             itemLinkCount += expandedLinks.length;
           }
@@ -160,15 +132,19 @@ const main = async () => {
         }
       }
 
-      // Track users for Phase 3 search
-      if (item.author?.userName && !processedUsers.has(item.author.userName)) {
-        processedUsers.add(item.author.userName);
-      }
-
-      if (itemLinkCount > 0) {
-        console.log(
-          `Total: ${itemLinkCount} Steam links from @${item.author?.userName}`
-        );
+      // Categorize users based on whether they have Steam links
+      if (username) {
+        if (itemLinkCount > 0) {
+          usersWithSteamLinks.add(username);
+          console.log(
+            `✓ @${username}: ${itemLinkCount} Steam links found in tweet`
+          );
+        } else if (!usersWithSteamLinks.has(username)) {
+          usersWithoutSteamLinks.add(username);
+          console.log(
+            `⚠️  @${username}: No Steam links found, will search their history`
+          );
+        }
       }
     }
 
@@ -182,27 +158,42 @@ const main = async () => {
     console.log(`\n=== PHASE 1 SUMMARY ===`);
     console.log(`Total Steam links found: ${allStoreLinks.length}`);
     console.log(`Unique Steam store links: ${finalStoreLinks.length}`);
-    console.log(`Users found: ${processedUsers.size}`);
+    console.log(`Users with Steam links: ${usersWithSteamLinks.size}`);
+    console.log(`Users without Steam links: ${usersWithoutSteamLinks.size}`);
 
-    // Phase 2: Search for tweets FROM these users mentioning "on steam"
-    console.log(`\n=== PHASE 2: USER TWEET SEARCH ===`);
-    const usernames = Array.from(processedUsers);
-    console.log(
-      `Searching tweets from ${usernames.length} users for "on steam" mentions...`
-    );
+    // Phase 2: Only search users who DON'T have Steam links (backup search)
+    if (usersWithoutSteamLinks.size === 0) {
+      console.log(`\n=== PHASE 2: SKIPPED ===`);
+      console.log(
+        `All users already have Steam links found! No backup search needed.`
+      );
+    } else {
+      console.log(
+        `\n=== PHASE 2: BACKUP SEARCH FOR USERS WITHOUT STEAM LINKS ===`
+      );
+      const usernames = Array.from(usersWithoutSteamLinks);
+      console.log(
+        `Searching for Steam store URLs from ${usernames.length} users...`
+      );
 
-    for (const username of usernames) {
-      console.log(`\nSearching tweets from @${username}...`);
+      // Create multiple search strategies for each user to maximize discovery
+      const searchTerms = usernames.flatMap((username) =>
+        BACKUP_SEARCH_TEMPLATES.map(
+          (template) => `from:${username} ${template}`
+        )
+      );
+
+      console.log(`Search terms (${searchTerms.length}):`, searchTerms);
 
       const userSearchInput = {
         includeSearchTerms: false,
-        maxItems: 20,
+        maxItems: usernames.length * BACKUP_TWEETS_PER_USER, // Scale tweets per user across all search terms
         onlyImage: false,
         onlyQuote: false,
         onlyTwitterBlue: false,
         onlyVerifiedUsers: false,
         onlyVideo: false,
-        searchTerms: [`from:${username} "on steam"`],
+        searchTerms: searchTerms,
         sort: "Latest",
         tweetLanguage: "en",
       };
@@ -211,23 +202,28 @@ const main = async () => {
         const userRun = await apifyClient
           .actor(GATHER_ACTOR_ID)
           .call(userSearchInput);
-        console.log(`User search run completed: ${userRun.id}`);
+        console.log(`Combined user search run completed: ${userRun.id}`);
 
         const { items: userItems } = await apifyClient
           .dataset(userRun.defaultDatasetId)
           .listItems();
-        console.log(`Found ${userItems.length} tweets from @${username}`);
+        console.log(`Found ${userItems.length} tweets with Steam store URLs`);
 
-        let userLinkCount = 0;
+        let phase2LinkCount = 0;
+        const userLinkCounts = new Map<string, number>();
+
         for (const userItem of userItems as unknown as TweetData[]) {
+          const author = userItem.author?.userName;
+          let itemLinkCount = 0;
+
           // Extract Steam store links from tweet text
           if (userItem.text) {
             const tweetLinks = extractSteamStoreLinks(userItem.text);
             if (tweetLinks.length > 0) {
               console.log(
-                `Found ${tweetLinks.length} Steam links in @${username}'s tweet text`
+                `Found ${tweetLinks.length} Steam links in @${author}'s tweet text`
               );
-              userLinkCount += tweetLinks.length;
+              itemLinkCount += tweetLinks.length;
             }
             allStoreLinks.push(...tweetLinks);
           }
@@ -240,24 +236,32 @@ const main = async () => {
               );
               if (expandedLinks.length > 0) {
                 console.log(
-                  `Found ${expandedLinks.length} Steam links in @${username}'s expanded URLs: ${urlEntity.expanded_url}`
+                  `Found ${expandedLinks.length} Steam links in @${author}'s expanded URLs: ${urlEntity.expanded_url}`
                 );
-                userLinkCount += expandedLinks.length;
+                itemLinkCount += expandedLinks.length;
               }
               allStoreLinks.push(...expandedLinks);
             }
           }
+
+          if (itemLinkCount > 0 && author) {
+            phase2LinkCount += itemLinkCount;
+            userLinkCounts.set(
+              author,
+              (userLinkCounts.get(author) || 0) + itemLinkCount
+            );
+          }
         }
 
-        if (userLinkCount > 0) {
-          console.log(
-            `✓ Total: ${userLinkCount} new Steam links from @${username}'s tweets`
-          );
-        } else {
-          console.log(`No new Steam links found in @${username}'s tweets`);
-        }
+        console.log(`\n=== PHASE 2 USER BREAKDOWN ===`);
+        userLinkCounts.forEach((count, username) => {
+          console.log(`@${username}: ${count} Steam links found`);
+        });
+        console.log(
+          `✓ Total Phase 2: ${phase2LinkCount} new Steam links found`
+        );
       } catch (error) {
-        console.error(`Error searching tweets for @${username}:`, error);
+        console.error(`Error in combined user search:`, error);
       }
     }
 
@@ -273,7 +277,7 @@ const main = async () => {
       `Total Steam links found (both phases): ${allStoreLinks.length}`
     );
     console.log(`Unique Steam store links (final): ${allFinalLinks.length}`);
-    console.log(`Users searched: ${usernames.length}`);
+    console.log(`Users searched: ${usersWithoutSteamLinks.size}`);
 
     // Ensure output directory exists
     const outputDir = path.join(__dirname, "../../../public/data");
@@ -297,4 +301,4 @@ if (require.main === module) {
   main();
 }
 
-export { extractSteamStoreLinks, scrapeProfileBio };
+export { extractSteamStoreLinks };
