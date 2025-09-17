@@ -26,38 +26,33 @@ export class SimilarGamesStrategy extends BaseSearchStrategy {
     });
 
     // Load data and find similar games
-    const tweets = await this.dataLoader.loadEmbeddedData();
+    const games = await this.dataLoader.loadReadyGames();
     const threshold = 0.2; // Lower threshold for similar games
 
-    const candidates = tweets
-      .flatMap(
-        (tweet) =>
-          tweet.steamProfiles
-            ?.map((game) => {
-              if (!game.structured_metadata || !tweet.embedding) return null;
+    const candidates = games
+      .map((game) => {
+        if (!game.embedding) return null;
 
-              // Skip if this is the reference game itself
-              if (
-                game.rawData.name
-                  .toLowerCase()
-                  .includes(referenceGame.toLowerCase()) ||
-                referenceGame
-                  .toLowerCase()
-                  .includes(game.rawData.name.toLowerCase())
-              ) {
-                return null;
-              }
+        // Skip if this is the reference game itself
+        if (
+          game.steam_data.name
+            .toLowerCase()
+            .includes(referenceGame.toLowerCase()) ||
+          referenceGame
+            .toLowerCase()
+            .includes(game.steam_data.name.toLowerCase())
+        ) {
+          return null;
+        }
 
-              const similarity = this.cosineSimilarity(
-                referenceEmbedding,
-                tweet.embedding
-              );
-              if (similarity < threshold) return null;
+        const similarity = this.cosineSimilarity(
+          referenceEmbedding,
+          game.embedding
+        );
+        if (similarity < threshold) return null;
 
-              return this.convertTweetToGameData(tweet, game, similarity);
-            })
-            .filter(Boolean) || []
-      )
+        return this.convertToGameData(game, similarity);
+      })
       .filter((game): game is GameData => game !== null);
 
     // Sort by similarity and deduplicate

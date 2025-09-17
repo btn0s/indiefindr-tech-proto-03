@@ -32,26 +32,21 @@ export class SemanticSearchStrategy extends BaseSearchStrategy {
     }
 
     // Load data and perform similarity search
-    const tweets = await this.dataLoader.loadEmbeddedData();
+    const games = await this.dataLoader.loadReadyGames();
     const threshold = this.getThreshold(query, intent);
 
-    const candidates = tweets
-      .flatMap(
-        (tweet) =>
-          tweet.steamProfiles
-            ?.map((game) => {
-              if (!game.structured_metadata || !tweet.embedding) return null;
+    const candidates = games
+      .map((game) => {
+        if (!game.embedding) return null;
 
-              const similarity = this.cosineSimilarity(
-                queryEmbedding,
-                tweet.embedding
-              );
-              if (similarity < threshold) return null;
+        const similarity = this.cosineSimilarity(
+          queryEmbedding,
+          game.embedding
+        );
+        if (similarity < threshold) return null;
 
-              return this.convertTweetToGameData(tweet, game, similarity);
-            })
-            .filter(Boolean) || []
-      )
+        return this.convertToGameData(game, similarity);
+      })
       .filter((game): game is GameData => game !== null);
 
     // Sort by similarity and deduplicate

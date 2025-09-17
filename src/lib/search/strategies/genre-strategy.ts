@@ -21,37 +21,28 @@ export class GenreSearchStrategy extends BaseSearchStrategy {
     });
 
     // Load data
-    const tweets = await this.dataLoader.loadEmbeddedData();
+    const games = await this.dataLoader.loadReadyGames();
     const threshold = 0.15; // Lower threshold for genre matching
 
-    const candidates = tweets
-      .flatMap(
-        (tweet) =>
-          tweet.steamProfiles
-            ?.map((game) => {
-              if (!game.structured_metadata || !tweet.embedding) return null;
+    const candidates = games
+      .map((game) => {
+        if (!game.embedding) return null;
 
-              // Apply genre filters
-              if (!this.matchesGenres(game, intent)) return null;
+        // Apply genre filters
+        if (!this.matchesGenres(game, intent)) return null;
 
-              const similarity = this.cosineSimilarity(
-                queryEmbedding,
-                tweet.embedding
-              );
-              if (similarity < threshold) return null;
+        const similarity = this.cosineSimilarity(
+          queryEmbedding,
+          game.embedding
+        );
+        if (similarity < threshold) return null;
 
-              // Boost similarity for exact genre matches
-              const genreBoost = this.calculateGenreBoost(game, intent);
-              const boostedSimilarity = Math.min(1.0, similarity + genreBoost);
+        // Boost similarity for exact genre matches
+        const genreBoost = this.calculateGenreBoost(game, intent);
+        const boostedSimilarity = Math.min(1.0, similarity + genreBoost);
 
-              return this.convertTweetToGameData(
-                tweet,
-                game,
-                boostedSimilarity
-              );
-            })
-            .filter(Boolean) || []
-      )
+        return this.convertToGameData(game, boostedSimilarity);
+      })
       .filter((game): game is GameData => game !== null);
 
     // Sort by similarity and deduplicate
@@ -64,13 +55,13 @@ export class GenreSearchStrategy extends BaseSearchStrategy {
   }
 
   private matchesGenres(game: any, intent: SearchIntent): boolean {
-    const metadata = game.structured_metadata;
+    const steamData = game.steam_data;
     const requestedGenres =
       intent.entities.genres?.map((g) => g.toLowerCase()) || [];
 
     return requestedGenres.some((requestedGenre) =>
-      metadata.steam_tags.some((tag: string) =>
-        this.isGenreMatch(tag.toLowerCase(), requestedGenre)
+      (steamData.genres || []).some((genre: any) =>
+        this.isGenreMatch(genre.description.toLowerCase(), requestedGenre)
       )
     );
   }
@@ -112,15 +103,17 @@ export class GenreSearchStrategy extends BaseSearchStrategy {
   }
 
   private calculateGenreBoost(game: any, intent: SearchIntent): number {
-    const metadata = game.structured_metadata;
+    const steamData = game.steam_data;
     const requestedGenres =
       intent.entities.genres?.map((g) => g.toLowerCase()) || [];
 
     let boost = 0;
 
     for (const requestedGenre of requestedGenres) {
-      for (const tag of metadata.steam_tags) {
-        if (this.isGenreMatch(tag.toLowerCase(), requestedGenre)) {
+      for (const genre of steamData.genres || []) {
+        if (
+          this.isGenreMatch(genre.description.toLowerCase(), requestedGenre)
+        ) {
           boost += 0.1; // Small boost for each matching genre
         }
       }

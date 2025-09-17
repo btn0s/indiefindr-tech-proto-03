@@ -16,40 +16,60 @@ export abstract class BaseSearchStrategy implements SearchStrategy {
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  protected convertTweetToGameData(
-    tweet: any,
-    game: any,
+  protected convertToGameData(
+    processedGame: any,
     similarity: number = 1
   ): GameData {
-    const rawData = game.rawData;
+    const steamData = processedGame.steam_data;
 
     return {
-      appId: game.appId,
-      title: rawData.name,
-      description: rawData.short_description,
+      appId: processedGame.app_id,
+      title: steamData.name,
+      description: steamData.short_description,
       price:
-        game.structured_metadata?.price ||
-        rawData.price_overview?.final_formatted ||
-        (rawData.is_free ? "Free" : "N/A"),
-      tags:
-        game.structured_metadata?.steam_tags ||
-        rawData.genres?.map((g: any) => g.description) ||
-        [],
-      releaseDate: rawData.release_date?.date || "",
-      developer: rawData.developers?.join(", ") || "",
-      publisher: rawData.publishers?.join(", ") || "",
+        steamData.price_overview?.final_formatted ||
+        (steamData.is_free ? "Free" : "N/A"),
+      tags: steamData.genres?.map((g: any) => g.description) || [],
+      releaseDate: steamData.release_date?.date || "",
+      developer: steamData.developers?.join(", ") || "",
+      publisher: steamData.publishers?.join(", ") || "",
       images: [
-        rawData.header_image || "",
-        ...(rawData.screenshots?.slice(0, 4).map((s: any) => s.path_full) ||
+        steamData.header_image || "",
+        ...(steamData.screenshots?.slice(0, 4).map((s: any) => s.path_full) ||
           []),
       ].filter(Boolean),
       videos: [],
-      tweetId: tweet.id,
-      tweetAuthor: tweet.author.userName,
-      tweetText: tweet.fullText || tweet.text,
-      tweetUrl: tweet.url,
+      tweetId: `game_${processedGame.app_id}`,
+      tweetAuthor: steamData.developers?.[0] || "IndieGameDev",
+      tweetText: processedGame.semantic_description,
+      tweetUrl: `https://store.steampowered.com/app/${processedGame.app_id}`,
       similarity,
-      structuredMetadata: game.structured_metadata,
+      structuredMetadata: this.extractStructuredMetadata(steamData),
+    };
+  }
+
+  protected extractStructuredMetadata(steamData: any) {
+    const playModes = new Set<string>();
+
+    (steamData.categories || []).forEach((cat: any) => {
+      const desc = cat.description.toLowerCase();
+      if (desc.includes("single-player")) playModes.add("single-player");
+      if (desc.includes("multi-player")) playModes.add("multi-player");
+      if (desc.includes("co-op")) playModes.add("co-op");
+      if (desc.includes("pvp")) playModes.add("pvp");
+      if (desc.includes("split screen")) playModes.add("split-screen");
+    });
+
+    return {
+      play_modes: Array.from(playModes),
+      steam_tags: steamData.genres?.map((g: any) => g.description) || [],
+      release_status: steamData.release_date?.coming_soon
+        ? "Upcoming"
+        : "Released",
+      is_free: steamData.is_free,
+      price:
+        steamData.price_overview?.final_formatted ||
+        (steamData.is_free ? "Free" : "N/A"),
     };
   }
 

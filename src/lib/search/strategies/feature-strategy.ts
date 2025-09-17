@@ -24,29 +24,24 @@ export class FeatureSearchStrategy extends BaseSearchStrategy {
     });
 
     // Load data
-    const tweets = await this.dataLoader.loadEmbeddedData();
+    const games = await this.dataLoader.loadReadyGames();
     const threshold = 0.2;
 
-    const candidates = tweets
-      .flatMap(
-        (tweet) =>
-          tweet.steamProfiles
-            ?.map((game) => {
-              if (!game.structured_metadata || !tweet.embedding) return null;
+    const candidates = games
+      .map((game) => {
+        if (!game.embedding) return null;
 
-              // Apply feature filters
-              if (!this.matchesFeatures(game, intent)) return null;
+        // Apply feature filters
+        if (!this.matchesFeatures(game, intent)) return null;
 
-              const similarity = this.cosineSimilarity(
-                queryEmbedding,
-                tweet.embedding
-              );
-              if (similarity < threshold) return null;
+        const similarity = this.cosineSimilarity(
+          queryEmbedding,
+          game.embedding
+        );
+        if (similarity < threshold) return null;
 
-              return this.convertTweetToGameData(tweet, game, similarity);
-            })
-            .filter(Boolean) || []
-      )
+        return this.convertToGameData(game, similarity);
+      })
       .filter((game): game is GameData => game !== null);
 
     // Sort by similarity and deduplicate
@@ -59,15 +54,15 @@ export class FeatureSearchStrategy extends BaseSearchStrategy {
   }
 
   private matchesFeatures(game: any, intent: SearchIntent): boolean {
-    const metadata = game.structured_metadata;
+    const steamData = game.steam_data;
 
     // Check play modes
     if (intent.entities.playModes?.length) {
       const hasRequiredMode = intent.entities.playModes.some((mode) =>
-        metadata.play_modes.some(
-          (gameMode: string) =>
-            gameMode.toLowerCase().includes(mode.toLowerCase()) ||
-            mode.toLowerCase().includes(gameMode.toLowerCase())
+        (steamData.categories || []).some(
+          (cat: any) =>
+            cat.description.toLowerCase().includes(mode.toLowerCase()) ||
+            mode.toLowerCase().includes(cat.description.toLowerCase())
         )
       );
       if (!hasRequiredMode) return false;
@@ -79,9 +74,9 @@ export class FeatureSearchStrategy extends BaseSearchStrategy {
 
       // Check against play modes
       if (features.some((f) => ["coop", "co-op", "multiplayer"].includes(f))) {
-        const hasMultiplayer = metadata.play_modes.some((mode: string) =>
+        const hasMultiplayer = (steamData.categories || []).some((cat: any) =>
           ["co-op", "multiplayer", "multi-player"].some((mp) =>
-            mode.toLowerCase().includes(mp)
+            cat.description.toLowerCase().includes(mp)
           )
         );
         if (!hasMultiplayer) return false;
@@ -89,10 +84,10 @@ export class FeatureSearchStrategy extends BaseSearchStrategy {
 
       // Check against tags
       const hasFeatureInTags = features.some((feature) =>
-        metadata.steam_tags.some(
-          (tag: string) =>
-            tag.toLowerCase().includes(feature) ||
-            feature.includes(tag.toLowerCase())
+        (steamData.genres || []).some(
+          (genre: any) =>
+            genre.description.toLowerCase().includes(feature) ||
+            feature.includes(genre.description.toLowerCase())
         )
       );
 
