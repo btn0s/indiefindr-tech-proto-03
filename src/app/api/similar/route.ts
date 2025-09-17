@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     console.log(`🎮 Similar games API called:`, {
       query: query || "(empty)",
       queryType: typeof query,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     if (!query || typeof query !== "string") {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Game name extraction:`, {
       originalQuery: query,
       extractedGameName: gameName,
-      extractionSuccessful: !!gameName
+      extractionSuccessful: !!gameName,
     });
 
     if (!gameName) {
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🔎 Looking up Steam data for: "${gameName}"`);
-    
+
     // Get Steam data
     const steamData = await searchSteamGame(gameName);
     const isIndie = detectIndieStatus(steamData);
@@ -138,15 +138,23 @@ export async function POST(request: NextRequest) {
       price: steamData.price_overview?.final_formatted,
       isIndie,
       indieDetectionReasons: {
-        hasSmallPublisher: steamData.publishers?.some((p: string) => 
-          ["InnerSloth", "Team Cherry", "Supergiant Games", "Devolver Digital"].some(indie => p.includes(indie))
+        hasSmallPublisher: steamData.publishers?.some((p: string) =>
+          [
+            "InnerSloth",
+            "Team Cherry",
+            "Supergiant Games",
+            "Devolver Digital",
+          ].some((indie) => p.includes(indie))
         ),
-        isLowPrice: parseFloat(steamData.price_overview?.final_formatted?.replace("$", "") || "0") < 30
-      }
+        isLowPrice:
+          parseFloat(
+            steamData.price_overview?.final_formatted?.replace("$", "") || "0"
+          ) < 30,
+      },
     });
 
     console.log(`🔍 Searching for similar games using: "${steamData.name}"`);
-    
+
     // For now, return mock similar games using existing search
     const { searchGames } = await import("@/lib/search");
     const similarGames = await searchGames(steamData.name);
@@ -156,11 +164,11 @@ export async function POST(request: NextRequest) {
       isIndie,
       isHidden: !isIndie,
       similarGamesFound: similarGames.length,
-      topResults: similarGames.slice(0, 3).map(game => ({
+      topResults: similarGames.slice(0, 3).map((game) => ({
         title: game.title,
-        similarity: game.similarity
+        similarity: game.similarity,
       })),
-      processingTime: Date.now() - startTime + "ms"
+      processingTime: Date.now() - startTime + "ms",
     });
 
     return NextResponse.json({
@@ -170,18 +178,13 @@ export async function POST(request: NextRequest) {
         steamUrl: steamData.steam_url,
         isHidden: !isIndie,
       },
-      similarGames: similarGames.slice(0, 10), // Limit results
+      similarGames: similarGames.slice(0, 50), // Return up to 50 for analysis
       wasNewReference: true,
       query,
       count: similarGames.length,
     });
   } catch (error) {
-    console.error("❌ Similar games API error:", {
-      error: error.message,
-      stack: error.stack,
-      query: query || "(empty)",
-      processingTime: Date.now() - startTime + "ms"
-    });
+    console.error("❌ Similar games API error:", error);
     return NextResponse.json(
       { error: "Failed to find similar games", games: [] },
       { status: 500 }
