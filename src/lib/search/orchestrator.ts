@@ -9,6 +9,7 @@ import {
   FeatureSearchStrategy,
   HybridSearchStrategy,
 } from "./strategies";
+import { DataLoader } from "./data-loader";
 
 export class SearchOrchestrator {
   private static instance: SearchOrchestrator;
@@ -193,19 +194,15 @@ export class SearchOrchestrator {
     }
 
     try {
-      // Use semantic strategy with a broad query to get all games
-      const semanticStrategy = new SemanticSearchStrategy();
-      const context: SearchContext = {
-        query: "indie games",
-        intent: {
-          type: "semantic",
-          confidence: 1,
-          entities: {},
-          searchStrategy: "get-all",
-        },
-      };
+      // Load all ready games directly
+      const dataLoader = DataLoader.getInstance();
+      const allGames = await dataLoader.loadReadyGames();
 
-      const results = await semanticStrategy.execute(context);
+      // Convert to GameData format using base strategy helper
+      const semanticStrategy = new SemanticSearchStrategy();
+      const results = allGames.map((game) =>
+        semanticStrategy["convertToGameData"](game, 1)
+      );
 
       // Cache for 10 minutes
       await searchCache.set(cacheKey, results, 10 * 60 * 1000);

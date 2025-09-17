@@ -3,7 +3,6 @@ import { searchCache } from "./cache";
 
 interface ProcessedGame {
   app_id: string;
-  name: string;
   semantic_description: string;
   embedding: number[];
   steam_data: any;
@@ -44,7 +43,7 @@ export class DataLoader {
     try {
       const { data: games, error } = await this.supabase
         .from("games")
-        .select("app_id, name, semantic_description, embedding, steam_data")
+        .select("app_id, semantic_description, embedding, steam_data")
         .eq("status", "ready");
 
       if (error) {
