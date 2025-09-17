@@ -3,8 +3,11 @@ import path from "path";
 import apifyClient from "../apify";
 
 const ACTOR_ID = "61RPP7dywgiy0JPD0";
-const SEARCH_TERMS = ['"wishlist on steam"'];
-const LIMIT = 20;
+const SEARCH_TERMS = [
+  '"wishlist on steam"',
+  '"You\'ll like my indie game if you enjoyed"',
+];
+const LIMIT = 100;
 export const OUTPUT_FILE = "gather-results.json";
 
 const input = {

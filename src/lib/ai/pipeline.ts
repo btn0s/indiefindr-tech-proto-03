@@ -3,11 +3,6 @@ import path from "path";
 
 const STEPS = [
   {
-    name: "Gather",
-    script: "0-gather.ts",
-    description: "Fetching tweets from Twitter via Apify",
-  },
-  {
     name: "Enrich",
     script: "1-enrich.ts",
     description: "Enriching tweets with Steam game data via Cheerio",
@@ -70,7 +65,6 @@ const runPipeline = async () => {
     console.log("🎉 Pipeline completed successfully!");
     console.log(`⏱️  Total time: ${duration} seconds`);
     console.log("\n📁 Output files:");
-    console.log("   • public/data/gather-results.json");
     console.log("   • public/data/enrich-results.json");
     console.log("   • public/data/metadata-results.json");
     console.log(
