@@ -1,5 +1,4 @@
 import { embed, generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
 import fs from "fs";
 import path from "path";
 import { EnrichedTweet, GameData } from "./types";
@@ -39,8 +38,22 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
         const { text: hypothetical } = await generateText({
           model: "openai/gpt-4o-mini",
           system:
-            "Rewrite the user query into a concise description of the intended indie game topic for semantic search. Keep it under 12 words.",
-          prompt: `User query: "${query}"\nReturn a short description that captures the intended topic and related concepts (e.g., for \"space\": space exploration, galaxy, sci-fi, spaceship, outer space).`,
+            "You expand ultra-short search queries into dense game descriptors for semantic search. Focus on gameplay intent and constraints. Prefer mechanics and modes over vibes. Keep under 24 words.",
+          prompt: `User query: "${query}"\n
+Return a single comma-separated descriptor covering:
+- core mechanics (action verbs),
+- play modes (single-player / co-op / online multiplayer / party),
+- player count if implied,
+- perspective (first-person / third-person / top-down / 2D),
+- themes/setting (e.g., space exploration, sci‑fi),
+- hard constraints (e.g., "social deduction", "no puzzle focus").
+
+Examples:
+- Query: "space" -> "space exploration, spaceship traversal, sci‑fi, galaxy setting, resource management, base building, systems simulation, no fantasy medieval"
+- Query: "outer space" -> "outer space travel, spaceship combat, solar system exploration, sci‑fi, star systems, mining, stations, fleet management, no sports"
+- Query: "among us" -> "social deduction, impostor vs crew, tasks and meetings, vote and accuse, online multiplayer party, 4–10 players, 2D top‑down, casual, no single‑player"
+
+Now produce the descriptor for: ${query}`,
         });
 
         const { embedding: hydeEmbedding } = await embed({
@@ -48,9 +61,11 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
           value: hypothetical.replaceAll("\n", " "),
         });
 
-        // Average base and HyDE embeddings to stabilize intent
+        // Weighted blend (lean toward expanded intent for short queries)
+        const hydeWeight = 0.65;
+        const baseWeight = 0.35;
         queryEmbedding = baseEmbedding.map(
-          (v, i) => (v + hydeEmbedding[i]) / 2
+          (v, i) => baseWeight * v + hydeWeight * hydeEmbedding[i]
         );
       } catch {
         // Fall back to base embedding if HyDE expansion fails
@@ -87,10 +102,7 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
                 ?.slice(0, 4)
                 .map((s: any) => s.path_full) || []),
             ].filter(Boolean),
-            videos:
-              rawData.movies
-                ?.slice(0, 2)
-                .map((m: any) => m.mp4?.max || m.mp4) || [],
+            videos: [], // Video UI removed - Steam video URLs unreliable
             tweetId: tweet.id,
             tweetAuthor: tweet.author.userName,
             tweetText: tweet.fullText || tweet.text,
@@ -148,10 +160,7 @@ export const getAllGames = async (): Promise<GameData[]> => {
                 ?.slice(0, 4)
                 .map((s: any) => s.path_full) || []),
             ].filter(Boolean),
-            videos:
-              rawData.movies
-                ?.slice(0, 2)
-                .map((m: any) => m.mp4?.max || m.mp4) || [],
+            videos: [], // Video UI removed - Steam video URLs unreliable
             tweetId: tweet.id,
             tweetAuthor: tweet.author.userName,
             tweetText: tweet.fullText || tweet.text,

@@ -2,61 +2,10 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { GameData } from "@/lib/types";
 
-interface Game {
-  appId: string;
-  title: string;
-  description: string;
-  price: string;
-  tags: string[];
-  releaseDate: string;
-  developer: string;
-  publisher: string;
-  images: string[];
-  videos: string[];
-  tweetId: string;
-  tweetAuthor: string;
-  tweetText?: string;
-  tweetUrl?: string;
-  aiMetadata?: {
-    summary: string;
-    gameTitles: string[];
-    genres: string[];
-    keyFeatures: string[];
-    targetAudience: string;
-    releaseStatus: string;
-    // Enhanced fields for natural language search
-    mood: string[];
-    vibe: string[];
-    atmosphere: string[];
-    playStyle: string[];
-    socialContext: string[];
-    difficultyLevel: string;
-    emotionalTone: string[];
-    settingAesthetics: string[];
-    gameplayFeel: string[];
-    // First-principles game attributes
-    playModes: string[];
-    coreMechanics: string[];
-    cameraPerspective: string[];
-    artStyle: string[];
-    visualStyle: string[];
-    controlScheme: string[];
-    sessionLength: string[];
-    complexity: string;
-    multiplayerFeatures: string[];
-    contentRating: string;
-    platformSupport: string[];
-    languageSupport: string[];
-    accessibility: string[];
-    performance: string[];
-  };
-  similarity: number;
-}
-
-export const GameCard = ({ game }: { game: Game }) => {
+export const GameCard = ({ game }: { game: GameData }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const hasVideo = game.videos && game.videos.length > 0;
 
   return (
     <div
@@ -67,16 +16,7 @@ export const GameCard = ({ game }: { game: Game }) => {
       <div
         className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]`}
       >
-        {isHovered && hasVideo ? (
-          <video
-            src={game.videos[0]}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover rounded-lg shadow-md"
-          />
-        ) : game.images[0] ? (
+        {game.images[0] ? (
           <Image
             src={game.images[0]}
             alt={game.title}
@@ -181,7 +121,7 @@ export const GameCard = ({ game }: { game: Game }) => {
         )}
 
         {/* Similarity score for search results */}
-        {game.similarity < 1 && (
+        {game.similarity !== undefined && game.similarity < 1 && (
           <div className="mt-2 text-xs text-blue-500">
             Match: {Math.round(game.similarity * 100)}%
           </div>

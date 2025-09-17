@@ -1,63 +1,7 @@
 import { GameCard } from "./game-card";
+import { GameData } from "@/lib/types";
 
-interface Game {
-  appId: string;
-  title: string;
-  description: string;
-  price: string;
-  tags: string[];
-  releaseDate: string;
-  developer: string;
-  publisher: string;
-  images: string[];
-  videos: string[];
-  tweetId: string;
-  tweetAuthor: string;
-  tweetText?: string;
-  tweetUrl?: string;
-  aiMetadata?: {
-    summary: string;
-    gameTitles: string[];
-    genres: string[];
-    keyFeatures: string[];
-    targetAudience: string;
-    releaseStatus: string;
-    // Enhanced fields for natural language search
-    mood: string[];
-    vibe: string[];
-    atmosphere: string[];
-    playStyle: string[];
-    socialContext: string[];
-    difficultyLevel: string;
-    emotionalTone: string[];
-    settingAesthetics: string[];
-    gameplayFeel: string[];
-    // First-principles game attributes
-    playModes: string[];
-    coreMechanics: string[];
-    cameraPerspective: string[];
-    artStyle: string[];
-    visualStyle: string[];
-    controlScheme: string[];
-    sessionLength: string[];
-    complexity: string;
-    multiplayerFeatures: string[];
-    contentRating: string;
-    platformSupport: string[];
-    languageSupport: string[];
-    accessibility: string[];
-    performance: string[];
-  };
-  similarity: number;
-}
-
-export const GameGrid = ({
-  games,
-  query,
-}: {
-  games: Game[];
-  query?: string;
-}) => {
+export const GameGrid = ({ games, query }: { games: GameData[]; query?: string }) => {
   return (
     <div className="space-y-4">
       {query && (
