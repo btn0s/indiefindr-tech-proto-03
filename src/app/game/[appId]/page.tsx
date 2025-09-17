@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Calendar, DollarSign } from "lucide-react";
 import { SimilarGames } from "@/components/similar-games";
+import { GameMediaCarousel } from "@/components/game-media-carousel";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!;
@@ -39,18 +41,24 @@ export default async function GameDetailPage({
   const steamData = game.steam_data;
 
   return (
-    <div className="container mx-auto px-6 py-8 max-w-4xl">
+    <div className="container mx-auto px-6 py-8 max-w-6xl">
       <Link
         href="/"
-        className="text-blue-600 hover:underline mb-4 inline-block"
+        className="text-blue-600 hover:underline mb-6 inline-block"
       >
         ← Back to search
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Game Image */}
-        <div>
-          {steamData.header_image ? (
+      {/* Media Carousel */}
+      <div className="mb-8">
+        <GameMediaCarousel steamData={steamData} />
+      </div>
+
+      {/* Game Header Info */}
+      <div className="flex flex-col lg:flex-row lg:items-start gap-6 mb-8">
+        {/* Header Image */}
+        {steamData.header_image && (
+          <div className="lg:w-80 flex-shrink-0">
             <Image
               src={steamData.header_image}
               alt={steamData.name}
@@ -59,72 +67,56 @@ export default async function GameDetailPage({
               className="w-full rounded-lg shadow-lg"
               unoptimized
             />
-          ) : (
-            <div className="w-full aspect-[460/215] bg-gray-200 rounded-lg flex items-center justify-center">
-              <span className="text-gray-500">No Image</span>
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Screenshots */}
-          {steamData.screenshots && steamData.screenshots.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-semibold mb-2">Screenshots</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {steamData.screenshots
-                  .slice(0, 4)
-                  .map((screenshot: any, index: number) => (
-                    <Image
-                      key={index}
-                      src={screenshot.path_thumbnail}
-                      alt={`Screenshot ${index + 1}`}
-                      width={300}
-                      height={169}
-                      className="rounded-lg shadow-sm"
-                      unoptimized
-                    />
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold mb-3">{steamData.name}</h1>
 
-        {/* Game Details */}
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{steamData.name}</h1>
-
-            <div className="flex flex-wrap gap-2 mb-4">
-              {steamData.genres?.map((genre: any, index: number) => (
-                <span
-                  key={index}
-                  className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
-                >
-                  {genre.description}
-                </span>
-              ))}
-            </div>
-
-            <div className="text-sm text-gray-600 space-y-1 mb-4">
-              <div>
-                <strong>Developer:</strong>{" "}
-                {steamData.developers?.join(", ") || "Unknown"}
-              </div>
-              <div>
-                <strong>Publisher:</strong>{" "}
-                {steamData.publishers?.join(", ") || "Unknown"}
-              </div>
-              <div>
-                <strong>Release:</strong>{" "}
+          <div className="text-sm text-gray-600 space-y-1 mb-4">
+            <div>by {steamData.developers?.join(", ") || "Unknown"}</div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
                 {steamData.release_date?.date || "TBA"}
               </div>
-              <div>
-                <strong>Price:</strong>{" "}
-                {steamData.price_overview?.final_formatted ||
-                  (steamData.is_free ? "Free" : "TBA")}
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-4 h-4" />
+                <span className="font-semibold">
+                  {steamData.price_overview?.final_formatted ||
+                    (steamData.is_free ? "Free" : "TBA")}
+                </span>
               </div>
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            {steamData.genres?.map((genre: any, index: number) => (
+              <span
+                key={index}
+                className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+              >
+                {genre.description}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-shrink-0">
+          <a
+            href={`https://store.steampowered.com/app/${appId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+          >
+            View on Steam →
+          </a>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Game Details */}
+        <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold mb-3">About This Game</h2>
             <p className="text-gray-700 leading-relaxed">
@@ -158,18 +150,6 @@ export default async function GameDetailPage({
               </div>
             </div>
           )}
-
-          {/* Steam Link */}
-          <div className="pt-4">
-            <a
-              href={`https://store.steampowered.com/app/${appId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
-            >
-              View on Steam →
-            </a>
-          </div>
         </div>
       </div>
 
