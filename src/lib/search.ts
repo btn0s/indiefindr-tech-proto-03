@@ -18,11 +18,9 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   return dotProduct / (magnitudeA * magnitudeB);
 };
 
-// Cache HyDE embeddings for deterministic behavior and lower latency
+// Caches
 const hydeCache = new Map<string, number[]>();
-// Cache reranker scores: key = query|appIdOrTitle
 const rerankCache = new Map<string, number>();
-// Final results TTL cache (e.g., 60 seconds)
 const resultCache = new Map<string, { data: GameData[]; ts: number }>();
 const RESULTS_TTL_MS = 60_000;
 
@@ -42,16 +40,12 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       return cached.data;
     }
 
-    // Load embedded data
     const tweets = await loadEmbeddedData();
-
-    // Generate embedding for the search query
     const { embedding: baseEmbedding } = await embed({
       model: models.embeddingModel,
       value: query,
     });
 
-    // HyDE-style query expansion for short/ambiguous queries
     let queryEmbedding = baseEmbedding;
     const tokenCount = query.trim().split(/\s+/).filter(Boolean).length;
     if (tokenCount <= 2) {
@@ -82,8 +76,8 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       }
     }
 
-    // 1. RETRIEVAL: Get a broad set of candidates
-    const threshold = query.length <= 5 ? 0.22 : 0.25;
+    // 1. RETRIEVAL
+    const threshold = query.length <= 5 ? 0.15 : 0.25;
     const candidates = tweets
       .flatMap(
         (tweet) =>
@@ -92,17 +86,16 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
               queryEmbedding,
               tweet.embedding!
             );
-            if (similarity < threshold) return null;
+            if (similarity < threshold || !game.structured_metadata)
+              return null;
 
             const rawData = game.rawData;
             return {
               appId: game.appId,
               title: rawData.name,
               description: rawData.short_description,
-              price:
-                rawData.price_overview?.final_formatted ||
-                (rawData.is_free ? "Free" : "N/A"),
-              tags: rawData.genres?.map((g: any) => g.description) || [],
+              price: game.structured_metadata.price,
+              tags: game.structured_metadata.steam_tags,
               releaseDate: rawData.release_date?.date || "",
               developer: rawData.developers?.join(", ") || "",
               publisher: rawData.publishers?.join(", ") || "",
@@ -116,9 +109,9 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
               tweetId: tweet.id,
               tweetAuthor: tweet.author.userName,
               tweetText: tweet.fullText || tweet.text,
-              aiMetadata: tweet.aiMetadata,
               tweetUrl: tweet.url,
               similarity,
+              structuredMetadata: game.structured_metadata,
             };
           }) || []
       )
@@ -128,7 +121,6 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       (a, b) => (b.similarity || 0) - (a.similarity || 0)
     );
 
-    // De-duplicate and get top 100 candidates for filtering/reranking
     const prelim: GameData[] = [];
     const seen = new Set<string>();
     for (const g of semRanked) {
@@ -139,22 +131,20 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       if (prelim.length >= 100) break;
     }
 
-    // 2. HARD FILTERING: Apply non-negotiable constraints
+    // 2. HARD FILTERING
     const filters = parseHardFilters(query);
     let filteredCandidates = prelim;
     if (filters.isCoop) {
-      filteredCandidates = prelim.filter((g) => {
-        const modes =
-          g.aiMetadata?.playModes?.map((m) => m.toLowerCase()) || [];
-        return modes.some(
+      filteredCandidates = prelim.filter((g) =>
+        g.structuredMetadata.play_modes.some(
           (m) => m.includes("co-op") || m.includes("multiplayer")
-        );
-      });
+        )
+      );
     }
 
-    // 3. RERANKING: Use LLM to score the filtered, relevant candidates
+    // 3. RERANKING
     const rerankThreshold = 0.4;
-    const rerankCandidates = filteredCandidates.slice(0, 40); // Rerank top 40 of the filtered list
+    const rerankCandidates = filteredCandidates.slice(0, 40);
 
     const ids = rerankCandidates.map((g) =>
       g.appId ? String(g.appId) : g.title.toLowerCase()
@@ -170,10 +160,8 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
         id: i,
         title: g.title,
         description: g.description || "",
-        tags: (g.tags || []).join(", "),
-        genres: ((g.aiMetadata?.genres as string[]) || []).join(", "),
-        mechanics: ((g.aiMetadata?.coreMechanics as string[]) || []).join(", "),
-        playModes: ((g.aiMetadata?.playModes as string[]) || []).join(", "),
+        tags: g.structuredMetadata.steam_tags.join(", "),
+        playModes: g.structuredMetadata.play_modes.join(", "),
       }));
 
       const schema = z.object({ scores: z.array(z.number()) });
@@ -181,15 +169,14 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
         model: models.chatModelMini,
         temperature: 0,
         schema,
-        system:
-          "You are a strict relevance scorer for indie game search. Return a JSON object with an array 'scores' of length N where each entry is a number 0.0-1.0 measuring relevance to the query intent. Penalize mismatched modes (e.g., single-player when query implies multiplayer/party) and unrelated genres.",
+        system: "You are a strict relevance scorer for indie game search...",
         prompt: `Query: ${query}\nItems:\n${items
-          .map((it) => `#${it.id} | ...`)
-          .join("\n\n")}\n\nReturn JSON: { "scores": [ ... ] } with exactly ${
-          items.length
-        } numbers.`,
+          .map(
+            (it) =>
+              `#${it.id} | Title: ${it.title} | Modes: ${it.playModes} | Tags: ${it.tags}`
+          )
+          .join("\n\n")}\n\nReturn JSON: { "scores": [ ... ] }`,
       });
-
       const scores = object.scores || [];
       uncached.forEach(({ k }, idx) => {
         const s = Math.max(0, Math.min(1, Number(scores[idx] ?? 0)));
@@ -217,7 +204,6 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
       .slice(0, 20)
       .map((x) => x.g);
 
-    // Store in results cache
     resultCache.set(cacheKey, { data: finalResults, ts: now });
 
     // Debug logging
@@ -236,6 +222,7 @@ export const searchGames = async (query: string): Promise<GameData[]> => {
   }
 };
 
+// getAllGames also needs to be updated to use the new structure
 export const getAllGames = async (): Promise<GameData[]> => {
   try {
     const tweets = await loadEmbeddedData();
@@ -250,9 +237,13 @@ export const getAllGames = async (): Promise<GameData[]> => {
             title: rawData.name,
             description: rawData.short_description,
             price:
+              game.structured_metadata?.price ||
               rawData.price_overview?.final_formatted ||
               (rawData.is_free ? "Free" : "N/A"),
-            tags: rawData.genres?.map((g: any) => g.description) || [],
+            tags:
+              game.structured_metadata?.steam_tags ||
+              rawData.genres?.map((g: any) => g.description) ||
+              [],
             releaseDate: rawData.release_date?.date || "",
             developer: rawData.developers?.join(", ") || "",
             publisher: rawData.publishers?.join(", ") || "",
@@ -266,9 +257,9 @@ export const getAllGames = async (): Promise<GameData[]> => {
             tweetId: tweet.id,
             tweetAuthor: tweet.author.userName,
             tweetText: tweet.fullText || tweet.text,
-            aiMetadata: tweet.aiMetadata,
             tweetUrl: tweet.url,
             similarity: 1, // Default similarity for non-search results
+            structuredMetadata: game.structured_metadata, // Add required field
           };
         })
       );

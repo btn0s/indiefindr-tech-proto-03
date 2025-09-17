@@ -2,195 +2,60 @@ import { embed } from "ai";
 import fs from "fs";
 import path from "path";
 import { OUTPUT_FILE as METADATA_OUTPUT_FILE } from "./2-generate-metadata";
+import { EnrichedTweet } from "../types";
+import models from "@/lib/ai/models";
 
-const embeddingModel = "openai/text-embedding-3-small";
-const OUTPUT_FILE = "embed-results.json";
+export const OUTPUT_FILE = "embed-results.json";
 
-interface TweetWithMetadata {
-  id: string;
-  author: {
-    userName: string;
-    url: string;
-  };
-  entities?: {
-    urls?: Array<{
-      expanded_url: string;
-    }>;
-  };
-  steamProfiles?: Array<{
-    appId: string;
-    rawData: any; // Complete raw Steam API response
-  }>;
-  text?: string;
-  fullText?: string;
-  createdAt?: string;
-  likeCount?: number;
-  retweetCount?: number;
-  replyCount?: number;
-  url?: string;
-  extendedEntities?: any;
-  isQuote?: boolean;
-  quote?: any;
-  aiMetadata: {
-    summary: string;
-    gameTitles: string[];
-    genres: string[];
-    keyFeatures: string[];
-    targetAudience: string;
-    releaseStatus: string;
-    // Enhanced fields for natural language search
-    mood: string[];
-    vibe: string[];
-    atmosphere: string[];
-    playStyle: string[];
-    socialContext: string[];
-    difficultyLevel: string;
-    emotionalTone: string[];
-    settingAesthetics: string[];
-    gameplayFeel: string[];
-    // First-principles game attributes
-    playModes: string[];
-    coreMechanics: string[];
-    cameraPerspective: string[];
-    artStyle: string[];
-    visualStyle: string[];
-    controlScheme: string[];
-    sessionLength: string[];
-    complexity: string;
-    multiplayerFeatures: string[];
-    contentRating: string;
-    platformSupport: string[];
-    languageSupport: string[];
-    accessibility: string[];
-    performance: string[];
-  };
-}
-
-interface FinalTweet extends TweetWithMetadata {
-  embedding: number[];
-}
-
-const loadMetadataFile = async (): Promise<TweetWithMetadata[]> => {
-  const filePath = path.join(
+async function main() {
+  const metadataFile = path.join(
     __dirname,
     "../../../public/data",
     METADATA_OUTPUT_FILE
   );
-  const rawFile = await fs.promises.readFile(filePath, { encoding: "utf-8" });
-  return JSON.parse(rawFile);
-};
+  const tweetsWithSemanticText: EnrichedTweet[] = JSON.parse(
+    fs.readFileSync(metadataFile, "utf-8")
+  );
 
-const writeEmbeddedData = async (
-  finalTweets: FinalTweet[],
-  outputPath: string
-) => {
-  try {
-    await fs.promises.writeFile(
-      outputPath,
-      JSON.stringify(finalTweets, null, 2)
-    );
-    console.log(`All final data written to ${outputPath}`);
-  } catch (error) {
-    console.error("Error writing final data to file:", error);
-    throw error;
-  }
-};
+  console.log(`Embedding ${tweetsWithSemanticText.length} tweets...`);
 
-async function main() {
-  // Load metadata from previous step
-  const tweetsWithMetadata = await loadMetadataFile();
+  const tweetsWithEmbeddings = [];
 
-  console.log(`Processing ${tweetsWithMetadata.length} tweets for embedding`);
-
-  const finalTweets: FinalTweet[] = [];
-
-  for (const tweet of tweetsWithMetadata) {
-    console.clear();
-    console.log(
-      `Generating embedding for tweet ${tweet.id} (${
-        tweetsWithMetadata.indexOf(tweet) + 1
-      }/${tweetsWithMetadata.length})`
-    );
+  for (const tweet of tweetsWithSemanticText) {
+    if (!tweet.semantic_text_for_embedding) {
+      console.warn(`Skipping tweet ${tweet.id} due to missing semantic text.`);
+      continue;
+    }
 
     try {
-      // Create a comprehensive text for embedding optimized for semantic search
-      const embeddingText = [
-        // Core game information
-        tweet.aiMetadata.summary,
-        `Games: ${tweet.aiMetadata.gameTitles.join(", ")}`,
+      console.log(
+        `Embedding tweet ${tweetsWithSemanticText.indexOf(tweet) + 1}/${
+          tweetsWithSemanticText.length
+        }`
+      );
 
-        // Genre and style information (key for search)
-        `Genres: ${tweet.aiMetadata.genres.join(", ")}`,
-        `Art Style: ${tweet.aiMetadata.artStyle?.join(", ") || ""}`,
-        `Visual Style: ${tweet.aiMetadata.visualStyle?.join(", ") || ""}`,
-        `Camera Perspective: ${
-          tweet.aiMetadata.cameraPerspective?.join(", ") || ""
-        }`,
-
-        // Gameplay mechanics (critical for "shooter", "action", etc.)
-        `Core Mechanics: ${tweet.aiMetadata.coreMechanics?.join(", ") || ""}`,
-        `Key Features: ${tweet.aiMetadata.keyFeatures.join(", ")}`,
-        `Play Modes: ${tweet.aiMetadata.playModes?.join(", ") || ""}`,
-        `Control Scheme: ${tweet.aiMetadata.controlScheme?.join(", ") || ""}`,
-
-        // Emotional and experiential descriptors
-        `Mood: ${tweet.aiMetadata.mood?.join(", ") || ""}`,
-        `Vibe: ${tweet.aiMetadata.vibe?.join(", ") || ""}`,
-        `Atmosphere: ${tweet.aiMetadata.atmosphere?.join(", ") || ""}`,
-        `Play Style: ${tweet.aiMetadata.playStyle?.join(", ") || ""}`,
-        `Emotional Tone: ${tweet.aiMetadata.emotionalTone?.join(", ") || ""}`,
-        `Gameplay Feel: ${tweet.aiMetadata.gameplayFeel?.join(", ") || ""}`,
-
-        // Social and difficulty context
-        `Social Context: ${tweet.aiMetadata.socialContext?.join(", ") || ""}`,
-        `Difficulty: ${tweet.aiMetadata.difficultyLevel || ""}`,
-        `Complexity: ${tweet.aiMetadata.complexity || ""}`,
-        `Session Length: ${tweet.aiMetadata.sessionLength?.join(", ") || ""}`,
-
-        // Multiplayer and technical details
-        `Multiplayer Features: ${
-          tweet.aiMetadata.multiplayerFeatures?.join(", ") || ""
-        }`,
-        `Content Rating: ${tweet.aiMetadata.contentRating || ""}`,
-        `Target Audience: ${tweet.aiMetadata.targetAudience}`,
-        `Release Status: ${tweet.aiMetadata.releaseStatus}`,
-
-        // Technical specs
-        `Platform Support: ${
-          tweet.aiMetadata.platformSupport?.join(", ") || ""
-        }`,
-        `Performance: ${tweet.aiMetadata.performance?.join(", ") || ""}`,
-        `Accessibility: ${tweet.aiMetadata.accessibility?.join(", ") || ""}`,
-      ]
-        .filter((line) => line.trim() && !line.endsWith(": "))
-        .join("\n");
-
-      // Generate embedding
       const { embedding } = await embed({
-        model: embeddingModel,
-        value: embeddingText,
+        model: models.embeddingModel,
+        value: tweet.semantic_text_for_embedding,
       });
 
-      // Create final tweet with all data + embedding
-      finalTweets.push({
-        ...tweet, // All original tweet data + Steam data + AI metadata
+      tweetsWithEmbeddings.push({
+        ...tweet,
         embedding,
       });
     } catch (error) {
-      console.error(`Error processing tweet ${tweet.id}:`, error);
+      console.error(`Error embedding tweet ${tweet.id}:`, error);
     }
   }
 
-  // Save final data to JSON file
-  const outputPath = path.join(__dirname, "../../../public/data", OUTPUT_FILE);
-  await writeEmbeddedData(finalTweets, outputPath);
+  const outputFile = path.join(__dirname, "../../../public/data", OUTPUT_FILE);
+  fs.writeFileSync(outputFile, JSON.stringify(tweetsWithEmbeddings, null, 2));
 
-  console.log("Successfully embedded and saved all tweets!");
-  console.log(`Total tweets processed: ${finalTweets.length}`);
-  console.log(`Embedding dimensions: ${finalTweets[0]?.embedding.length || 0}`);
+  console.log(
+    `Embedded ${tweetsWithEmbeddings.length} tweets and saved to ${outputFile}`
+  );
 }
 
-// Only run if this script is executed directly
 if (require.main === module) {
   main().catch(console.error);
 }
