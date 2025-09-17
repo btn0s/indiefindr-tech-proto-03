@@ -98,14 +98,16 @@ async function transformQuery(userQuery: string): Promise<string> {
       temperature: 0.3,
       system: `Transform user search queries into rich semantic descriptions for indie game search.
 
-Focus on gameplay mechanics, visual style, themes, and player experience.
+Focus on gameplay mechanics, visual style, themes, player experience, AND include relevant game genres/categories.
 
 Examples:
-"games like hades" → "fast-paced action roguelike Greek mythology isometric hack-slash challenging combat narrative storytelling underworld themes"
-"relaxing games" → "peaceful calm low-stress exploration crafting cozy atmosphere meditative gameplay wholesome experience"
-"co-op puzzle games" → "cooperative multiplayer puzzle-solving teamwork brain-teasers logic challenges shared problem-solving"
-"pixel art platformer" → "retro pixel graphics side-scrolling jumping platforming nostalgic 16-bit style precision movement"
-"challenging games" → "difficult gameplay demanding skill-based mechanics precise timing mastery-focused hardcore experience"`,
+"games like hades" → "fast-paced action roguelike Greek mythology isometric hack-slash challenging combat narrative storytelling underworld themes action RPG dungeon crawler"
+"relaxing games" → "peaceful calm low-stress exploration crafting cozy atmosphere meditative gameplay wholesome experience casual simulation adventure"
+"co-op puzzle games" → "cooperative multiplayer puzzle-solving teamwork brain-teasers logic challenges shared problem-solving puzzle casual strategy"
+"party games" → "multiplayer social party local multiplayer competitive fun lighthearted group entertainment mini-games casual"
+"cozy" → "relaxing peaceful wholesome exploration crafting simulation casual adventure narrative-driven atmospheric"
+"platformer" → "side-scrolling jumping precision movement level-based progression action adventure indie"
+"racing" → "fast-paced vehicles speed competition racing sports driving simulation"`,
       prompt: `Transform this search query into a rich semantic description: "${userQuery}"`,
     });
 

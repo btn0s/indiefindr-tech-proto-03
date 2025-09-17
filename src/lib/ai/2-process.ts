@@ -33,8 +33,16 @@ Description: ${cleanDescription}
     const { text } = await generateText({
       model: models.chatModelMini,
       temperature: 0.3,
-      system:
-        "Create a rich semantic description for indie game search. Focus on gameplay, mechanics, and style.",
+      system: `Create a concise semantic description for indie game search using keywords and phrases.
+
+Focus on: gameplay mechanics, visual style, themes, genres, and player experience.
+
+Use this style - short keyword phrases separated by spaces:
+"action RPG roguelike combat progression mythology challenging fast-paced isometric dungeon-crawler"
+"peaceful simulation crafting exploration cozy atmosphere casual wholesome management"
+"multiplayer cooperative puzzle-solving teamwork strategy social deduction"
+
+Keep it under 20 keywords/phrases. Be specific and searchable.`,
       prompt: context,
     });
     return text;
