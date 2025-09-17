@@ -52,9 +52,7 @@ export interface GameData {
   tweetText: string;
   tweetUrl: string;
   similarity: number;
-  // Use the new data structures
   structuredMetadata: StructuredMetadata;
-  aiMetadata?: any; // Keeping for now, but should be deprecated
 }
 
 // Pipeline step output types

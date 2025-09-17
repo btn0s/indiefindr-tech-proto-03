@@ -5,14 +5,10 @@ import { useState } from "react";
 import { GameData } from "@/lib/types";
 
 export const GameCard = ({ game }: { game: GameData }) => {
-  const [isHovered, setIsHovered] = useState(false);
+
 
   return (
-    <div
-      className="group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="group">
       <div
         className={`bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]`}
       >
@@ -65,60 +61,6 @@ export const GameCard = ({ game }: { game: GameData }) => {
           <div>by {game.developer}</div>
           {game.releaseDate && <div>Release: {game.releaseDate}</div>}
         </div>
-
-        {/* AI Summary and Vibes */}
-        {game.aiMetadata && (
-          <div className="mt-3 p-2 bg-gray-50 rounded text-xs space-y-2">
-            <p className="text-gray-600 italic">"{game.aiMetadata.summary}"</p>
-
-            {/* Mood/Vibe tags */}
-            {(game.aiMetadata.vibe?.length > 0 ||
-              game.aiMetadata.mood?.length > 0) && (
-              <div className="flex flex-wrap gap-1">
-                {game.aiMetadata.vibe?.slice(0, 2).map((vibe, index) => (
-                  <span
-                    key={index}
-                    className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs"
-                  >
-                    {vibe}
-                  </span>
-                ))}
-                {game.aiMetadata.mood?.slice(0, 1).map((mood, index) => (
-                  <span
-                    key={index}
-                    className="bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs"
-                  >
-                    {mood}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Social Context */}
-            {game.aiMetadata.socialContext?.length > 0 && (
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Perfect for:</span>{" "}
-                {game.aiMetadata.socialContext.slice(0, 2).join(", ")}
-              </div>
-            )}
-
-            {/* Play Modes */}
-            {game.aiMetadata.playModes?.length > 0 && (
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Play modes:</span>{" "}
-                {game.aiMetadata.playModes.slice(0, 2).join(", ")}
-              </div>
-            )}
-
-            {/* Art Style */}
-            {game.aiMetadata.artStyle?.length > 0 && (
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Style:</span>{" "}
-                {game.aiMetadata.artStyle.slice(0, 2).join(", ")}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Similarity score for search results */}
         {game.similarity !== undefined && game.similarity < 1 && (

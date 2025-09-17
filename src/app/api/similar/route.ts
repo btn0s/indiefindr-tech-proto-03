@@ -1,3 +1,4 @@
+import { searchGames } from "@/lib/search";
 import { NextRequest, NextResponse } from "next/server";
 
 // Extract game name from "games like X" queries
@@ -155,8 +156,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Searching for similar games using: "${steamData.name}"`);
 
-    // For now, return mock similar games using existing search
-    const { searchGames } = await import("@/lib/search");
     const similarGames = await searchGames(steamData.name);
 
     console.log(`✅ Similar games search completed:`, {

@@ -63,7 +63,12 @@ async function main() {
       .map(
         (game) => `
           Game: ${game.rawData.name}
-          Description: ${game.rawData.short_description}
+          Image URL: ${game.rawData.header_image}
+          Description: ${
+            game.rawData.about_the_game ||
+            game.rawData.detailed_description ||
+            game.rawData.short_description
+          }
           Genres: ${
             game.rawData.genres?.map((g: any) => g.description).join(", ") ||
             "N/A"
@@ -89,7 +94,7 @@ You are an expert indie game curator who specializes in understanding the emotio
 </role>
 
 <task>
-Analyze the provided tweet and Steam game data to generate a single, dense paragraph of descriptive text for a semantic search embedding. This text should capture the game's core identity, vibe, and intended player experience.
+Analyze the provided tweet and Steam game data (including the header image) to generate a single, dense paragraph of descriptive text for a semantic search embedding. This text should capture the game's core identity, vibe, and intended player experience based on both text and visual analysis.
 </task>
 
 <data>
@@ -100,12 +105,13 @@ ${gamesContext}
 </data>
 
 <instructions>
-1.  Synthesize the tweet and Steam data into a single, flowing paragraph.
-2.  Start with the genre and core identity (e.g., "A cozy, open-world farming sim...").
-3.  Weave in the primary gameplay mechanics and what the player *does* (e.g., "...where you'll explore, craft, and build relationships...").
-4.  Describe the mood, atmosphere, and emotional tone (e.g., "...in a relaxing, whimsical world filled with charming characters.").
-5.  Mention the intended social context (e.g., "Perfect for a solo adventure or relaxing with friends in online co-op.").
-6.  The final text should be a rich, descriptive summary optimized for semantic understanding. Do not use markdown or lists.
+1.  Analyze the header image at the provided URL to understand its art style, color palette, mood, and atmosphere.
+2.  Synthesize the visual insights with the tweet and Steam text data into a single, flowing paragraph.
+3.  Start with the genre and core identity (e.g., "A cozy, open-world farming sim...").
+4.  Weave in the primary gameplay mechanics and what the player *does* (e.g., "...where you'll explore, craft, and build relationships...").
+5.  Describe the mood, atmosphere, and emotional tone, incorporating your visual analysis (e.g., "...in a relaxing, whimsical world with a vibrant, hand-drawn art style.").
+6.  Mention the intended social context (e.g., "Perfect for a solo adventure or relaxing with friends in online co-op.").
+7.  The final text should be a rich, descriptive summary optimized for semantic understanding. Do not use markdown or lists.
 </instructions>
 
 Generate the semantic paragraph now.`,
