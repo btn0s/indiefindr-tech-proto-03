@@ -116,7 +116,10 @@ Examples:
   }
 }
 
-export async function searchGames(query: string): Promise<GameData[]> {
+export async function searchGames(
+  query: string,
+  userId?: string
+): Promise<GameData[]> {
   if (!query || query.length < 3) {
     return getAllGames();
   }
@@ -124,6 +127,8 @@ export async function searchGames(query: string): Promise<GameData[]> {
   const cacheKey = `search:${query.toLowerCase()}`;
   const cached = getFromCache<GameData[]>(cacheKey);
   if (cached) return cached;
+
+  const startTime = Date.now();
 
   try {
     // Transform natural language query into rich semantic description
@@ -170,6 +175,22 @@ export async function searchGames(query: string): Promise<GameData[]> {
       })
       .filter((game): game is GameData => game !== null)
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+
+    // Save search analytics
+    const processingTime = Date.now() - startTime;
+    try {
+      await supabase.from("searches").insert({
+        original_query: query,
+        transformed_query: semanticQuery,
+        query_embedding: queryEmbedding,
+        result_count: candidates.length,
+        processing_time_ms: processingTime,
+        user_id: userId,
+      });
+    } catch (analyticsError) {
+      console.error("Failed to save search analytics:", analyticsError);
+      // Don't fail the search if analytics fail
+    }
 
     setCache(cacheKey, candidates);
     return candidates;
