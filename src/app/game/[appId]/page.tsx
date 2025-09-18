@@ -31,12 +31,6 @@ export async function generateMetadata({
   const title = steamData.name;
   const description =
     steamData.short_description || steamData.detailed_description || "";
-  const developer = steamData.developers?.[0] || "";
-  const genres =
-    steamData.genres?.map((g: any) => g.description).join(", ") || "";
-  const price =
-    steamData.price_overview?.final_formatted ||
-    (steamData.is_free ? "Free" : "");
 
   return {
     title: `${title} is on Indiefindr`,
