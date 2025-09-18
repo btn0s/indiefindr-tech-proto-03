@@ -6,10 +6,52 @@ import { createClient } from "@supabase/supabase-js";
 import { Calendar, DollarSign } from "lucide-react";
 import { SimilarGames } from "@/components/similar-games";
 import { GameMediaCarousel } from "@/components/game-media-carousel";
+import type { Metadata } from "next";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ appId: string }>;
+}): Promise<Metadata> {
+  const { appId } = await params;
+  const game = await getGame(appId);
+
+  if (!game) {
+    return {
+      title: "Game Not Found - Indiefindr",
+      description: "The requested game could not be found on Indiefindr.",
+    };
+  }
+
+  const steamData = game.steam_data;
+  const title = steamData.name;
+  const description =
+    steamData.short_description || steamData.detailed_description || "";
+  const developer = steamData.developers?.[0] || "";
+  const genres =
+    steamData.genres?.map((g: any) => g.description).join(", ") || "";
+  const price =
+    steamData.price_overview?.final_formatted ||
+    (steamData.is_free ? "Free" : "");
+
+  return {
+    title: `${title} - Indie Game on Indiefindr`,
+    description: `${description} Developed by ${developer}. ${
+      genres ? `Genres: ${genres}. ` : ""
+    }${
+      price ? `Price: ${price}. ` : ""
+    }Discover this indie game on Indiefindr.`.trim(),
+    openGraph: {
+      title: `${title} - Indie Game`,
+      description: description,
+      images: steamData.header_image ? [steamData.header_image] : [],
+    },
+  };
+}
 
 async function getGame(appId: string) {
   const { data: game, error } = await supabase
