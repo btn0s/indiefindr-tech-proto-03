@@ -60,10 +60,13 @@ async function getGame(appId: string) {
 
 export default async function GameDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ appId: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { appId } = await params;
+  const { from } = await searchParams;
   const game = await getGame(appId);
 
   if (!game) {
@@ -72,13 +75,17 @@ export default async function GameDetailPage({
 
   const steamData = game.steam_data;
 
+  // Construct the back link - if we have a 'from' query, go back to search results, otherwise go to home
+  const backHref = from ? `/?q=${encodeURIComponent(from)}` : "/";
+  const backText = from ? `← Back to "${from}" search` : "← Back to search";
+
   return (
     <div className="py-6">
       <Link
-        href="/"
+        href={backHref}
         className="text-blue-600 hover:underline mb-6 inline-block"
       >
-        ← Back to search
+        {backText}
       </Link>
 
       {/* Game Header Info - Full Width */}

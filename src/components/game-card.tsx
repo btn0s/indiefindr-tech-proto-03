@@ -4,9 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { GameData } from "@/lib/types";
 
-export const GameCard = ({ game }: { game: GameData }) => {
+export const GameCard = ({
+  game,
+  query,
+}: {
+  game: GameData;
+  query?: string;
+}) => {
+  const href = query
+    ? `/game/${game.appId}?from=${encodeURIComponent(query)}`
+    : `/game/${game.appId}`;
+
   return (
-    <Link href={`/game/${game.appId}`} className="group block">
+    <Link href={href} className="group block">
       <div className="bg-muted rounded-lg overflow-hidden transition-all duration-300 aspect-[460/215]">
         {game.images[0] ? (
           <Image
