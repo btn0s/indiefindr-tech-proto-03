@@ -22,7 +22,7 @@ function getGamingReference(): string {
     try {
       const referencePath = path.join(
         process.cwd(),
-        "src/lib/gaming-reference.txt"
+        "src/assets/context/gaming-reference.txt"
       );
       gamingReference = fs.readFileSync(referencePath, "utf-8");
     } catch (error) {
