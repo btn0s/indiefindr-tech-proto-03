@@ -39,16 +39,16 @@ export async function generateMetadata({
     (steamData.is_free ? "Free" : "");
 
   return {
-    title: `${title} is on Indiefindr`,
+    title: `${title} - Hidden Indie Gem on Indiefindr`,
     description: `${description} Developed by ${developer}. ${
       genres ? `Genres: ${genres}. ` : ""
     }${
       price ? `Price: ${price}. ` : ""
-    }Discover this indie game on Indiefindr.`.trim(),
+    }A hidden indie gem that deserves attention.`.trim(),
     openGraph: {
-      title: `${title} - Indie Game`,
+      title: `${title} - Hidden Indie Gem`,
       description: description,
-      images: steamData.header_image ? [steamData.header_image] : [],
+      images: ["/og.png"],
     },
   };
 }

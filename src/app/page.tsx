@@ -22,20 +22,35 @@ export async function generateMetadata({
       if (count === 0) {
         return {
           title: `No ${queryText} found on Indiefindr`,
-          description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
+          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+          openGraph: {
+            title: `No ${queryText} found on Indiefindr`,
+            description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+            images: ["/og.png"],
+          },
         };
       }
 
       return {
         title: `${count} ${queryText} on Indiefindr`,
-        description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
+        description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+        openGraph: {
+          title: `${count} ${queryText} on Indiefindr`,
+          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+          images: ["/og.png"],
+        },
       };
     } catch (error) {
       const hasGamesWord = query.toLowerCase().includes("games");
       const queryText = hasGamesWord ? query : `${query} games`;
       return {
         title: `Discover ${queryText} on Indiefindr`,
-        description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
+        description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+        openGraph: {
+          title: `Discover ${queryText} on Indiefindr`,
+          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+          images: ["/og.png"],
+        },
       };
     }
   }
@@ -43,7 +58,13 @@ export async function generateMetadata({
   return {
     title: "Indiefindr - Discover Your Next Favorite Indie Game",
     description:
-      "Stop endlessly scrolling Steam. Find indie games you'll actually love with Indiefindr.",
+      "Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.",
+    openGraph: {
+      title: "Indiefindr - Discover Your Next Favorite Indie Game",
+      description:
+        "Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.",
+      images: ["/og.png"],
+    },
   };
 }
 
