@@ -48,7 +48,7 @@ export async function generateMetadata({
     openGraph: {
       title: `${title} - Hidden Indie Gem on Indiefindr`,
       description: description,
-      images: ["/og.png"],
+      images: steamData.header_image ? [steamData.header_image] : ["/og.png"],
     },
   };
 }
