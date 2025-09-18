@@ -49,12 +49,7 @@ export default async function GameDetailPage({
         ← Back to search
       </Link>
 
-      {/* Media Carousel */}
-      <div className="mb-8">
-        <GameMediaCarousel steamData={steamData} />
-      </div>
-
-      {/* Game Header Info */}
+      {/* Game Header Info - Full Width */}
       <div className="flex flex-col lg:flex-row lg:items-start gap-6 mb-8">
         {/* Header Image */}
         {steamData.header_image && (
@@ -114,7 +109,7 @@ export default async function GameDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Game Details */}
         <div className="space-y-6">
           <div>
@@ -150,6 +145,11 @@ export default async function GameDetailPage({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Media Carousel */}
+        <div>
+          <GameMediaCarousel steamData={steamData} />
         </div>
       </div>
 
