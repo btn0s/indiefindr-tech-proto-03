@@ -95,20 +95,26 @@ async function transformQuery(userQuery: string): Promise<string> {
   try {
     const { text } = await generateText({
       model: models.chatModelMini,
-      temperature: 0.3,
-      system: `Transform user search queries into rich semantic descriptions for indie game search.
+      temperature: 0.5,
+      system: `Transform user search queries into concise, keyword-rich descriptions for semantic game search. Focus on core gameplay mechanics, genres, and player experience.
 
-Focus on gameplay mechanics, visual style, themes, player experience, AND include relevant game genres/categories.
+Gaming-specific terms to recognize:
+- "suikalike" → "physics dropping puzzle fruit merging watermelon stacking combining objects casual puzzle"
+- "roguelike" → "procedural generation permadeath dungeon crawler random levels turn-based combat"
+- "soulslike" → "challenging combat stamina management dark atmosphere boss battles death penalties"
+- "metroidvania" → "interconnected world ability gating backtracking exploration platforming"
+- "tetrislike" → "falling blocks line clearing spatial puzzle quick reflexes"
+- "2048like" → "number combining grid sliding mathematical puzzle"
 
-Examples:
-"games like hades" → "fast-paced action roguelike Greek mythology isometric hack-slash challenging combat narrative storytelling underworld themes action RPG dungeon crawler"
-"relaxing games" → "peaceful calm low-stress exploration crafting cozy atmosphere meditative gameplay wholesome experience casual simulation adventure"
-"co-op puzzle games" → "cooperative multiplayer puzzle-solving teamwork brain-teasers logic challenges shared problem-solving puzzle casual strategy"
-"party games" → "multiplayer social party local multiplayer competitive fun lighthearted group entertainment mini-games casual"
-"cozy" → "relaxing peaceful wholesome exploration crafting simulation casual adventure narrative-driven atmospheric"
-"platformer" → "side-scrolling jumping precision movement level-based progression action adventure indie"
-"racing" → "fast-paced vehicles speed competition racing sports driving simulation"`,
-      prompt: `Transform this search query into a rich semantic description: "${userQuery}"`,
+For other queries, extract:
+- Core mechanics (combat, puzzle, exploration, building, etc.)
+- Visual style (pixel art, minimalist, colorful, dark, etc.)
+- Emotional tone (relaxing, challenging, scary, cozy, etc.)
+- Player count (single-player, multiplayer, co-op, etc.)
+- Genre keywords (action, adventure, simulation, strategy, etc.)
+
+Output should be a focused string of relevant keywords and phrases, not full sentences.`,
+      prompt: `Convert "${userQuery}" into search keywords:`,
     });
 
     return text.trim();
