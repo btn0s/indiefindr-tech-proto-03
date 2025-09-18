@@ -13,13 +13,16 @@ export async function generateMetadata({
 
   if (query) {
     const hasGamesWord = query.toLowerCase().includes("games");
-    const queryText = hasGamesWord ? query : `${query} games`;
+    const queryCapitalized = query.charAt(0).toUpperCase() + query.slice(1);
+    const queryText = hasGamesWord
+      ? queryCapitalized
+      : `${queryCapitalized} games`;
 
     return {
-      title: `Search ${queryText} on Indiefindr`,
+      title: `${queryText} on Indiefindr`,
       description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
       openGraph: {
-        title: `Search ${queryText} on Indiefindr`,
+        title: `${queryText} on Indiefindr`,
         description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
         images: ["/og.png"],
       },
