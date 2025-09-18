@@ -97,13 +97,6 @@ export function GameMediaCarousel({ steamData }: GameMediaCarouselProps) {
                       onClick={() => setLightboxOpen(true)}
                       unoptimized
                     />
-
-                    {/* Image counter */}
-                    {allImages.length > 1 && (
-                      <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                        {current + 1} / {allImages.length}
-                      </div>
-                    )}
                   </div>
                 </CarouselItem>
               ))}
@@ -112,9 +105,32 @@ export function GameMediaCarousel({ steamData }: GameMediaCarouselProps) {
             {/* Navigation arrows */}
             {allImages.length > 1 && (
               <>
-                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/70 border-none z-10 w-8 h-8 rounded-md backdrop-blur-sm hover:text-white" />
-                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 text-white hover:bg-black/70 border-none z-10 w-8 h-8 rounded-md backdrop-blur-sm hover:text-white" />
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => api?.scrollPrev()}
+                  aria-label="Previous image"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 text-white px-2 py-1 rounded-md backdrop-blur-sm hover:bg-black/50 border-none z-10"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => api?.scrollNext()}
+                  aria-label="Next image"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 text-white px-2 py-1 rounded-md backdrop-blur-sm hover:bg-black/50 border-none z-10"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
               </>
+            )}
+
+            {/* Image counter */}
+            {allImages.length > 1 && (
+              <div className="absolute bottom-2 right-2 bg-black/30 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm z-10">
+                {current + 1} / {allImages.length}
+              </div>
             )}
           </div>
         </Carousel>
