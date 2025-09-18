@@ -42,6 +42,22 @@ export function GameMediaCarousel({ steamData }: GameMediaCarouselProps) {
     });
   }, [api]);
 
+  // Auto-scroll thumbnail container to keep active thumbnail visible
+  useEffect(() => {
+    const thumbnailContainer = document.querySelector(".thumbnail-container");
+    const activeThumbnail = document.querySelector(
+      `[data-thumbnail-index="${current}"]`
+    );
+
+    if (thumbnailContainer && activeThumbnail) {
+      activeThumbnail.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [current]);
+
   // Handle keyboard navigation in lightbox
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -137,11 +153,12 @@ export function GameMediaCarousel({ steamData }: GameMediaCarouselProps) {
 
         {/* Thumbnail strip */}
         {allImages.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <div className="thumbnail-container flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 scroll-smooth">
             <div className="flex gap-2 px-1">
               {allImages.map((image: GameImage, index: number) => (
                 <button
                   key={`thumb-${image.id || index}`}
+                  data-thumbnail-index={index}
                   onClick={() => api?.scrollTo(index)}
                   className="flex-shrink-0 focus:outline-none rounded"
                 >
