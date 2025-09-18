@@ -13,7 +13,7 @@ export async function SimilarGames({
   try {
     // Use the new search API
     const response = await fetch(
-      `https://${getApiUrl()}/api/search-new?q=${encodeURIComponent(
+      `${getApiUrl()}/api/search/v2?q=${encodeURIComponent(
         similarQuery
       )}&pageSize=8`
     );

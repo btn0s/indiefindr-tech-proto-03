@@ -34,7 +34,7 @@ export function GameListWithLoadMore({
       if (query) params.set("q", query);
       params.set("page", String(nextPage));
 
-      const response = await fetch(`/api/search-new?${params.toString()}`);
+      const response = await fetch(`/api/search/v2?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch");
 
       const result = await response.json();

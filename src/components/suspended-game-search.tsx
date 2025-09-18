@@ -22,7 +22,7 @@ export const SuspendedGameSearch = async ({
       if (useNewSearch) {
         // Use the new search API
         const response = await fetch(
-          `https://${getApiUrl()}/api/search-new?q=${encodeURIComponent(
+          `${getApiUrl()}/api/search/v2?q=${encodeURIComponent(
             query
           )}&page=${page}`
         );
