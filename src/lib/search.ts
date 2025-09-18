@@ -219,10 +219,21 @@ Create an appealing connection for users who searched "${query}":`,
 
 export async function searchGames(
   query: string,
-  userId?: string
-): Promise<GameData[]> {
+  userId?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ games: GameData[]; totalCount: number; hasMore: boolean }> {
   if (!query || query.length < 3) {
-    return getAllGames();
+    const allGames = await getAllGames();
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedGames = allGames.slice(startIndex, endIndex);
+
+    return {
+      games: paginatedGames,
+      totalCount: allGames.length,
+      hasMore: endIndex < allGames.length,
+    };
   }
 
   const startTime = Date.now();
@@ -236,28 +247,48 @@ export async function searchGames(
 
     if (error) {
       console.error("Database error:", error);
-      return [];
+      return { games: [], totalCount: 0, hasMore: false };
     }
 
     if (!allGames || allGames.length === 0) {
-      return [];
+      return { games: [], totalCount: 0, hasMore: false };
     }
 
-    console.log(
-      `🔄 LLM scoring ${allGames.length} games for query: "${query}"`
+    // First pass: Apply text boost to all games for fast filtering
+    const textBoostedGames = allGames.map((game: any) => ({
+      game,
+      textBoost: calculateTextMatchBoost(query, game),
+    }));
+
+    // Sort by text boost first to prioritize exact matches
+    textBoostedGames.sort((a, b) => b.textBoost - a.textBoost);
+
+    // Calculate batch size - process more games if we have good text matches
+    const highTextBoostCount = textBoostedGames.filter(
+      (g) => g.textBoost > 0.2
+    ).length;
+    const batchSize = Math.max(
+      pageSize * 2,
+      Math.min(100, highTextBoostCount + 50)
     );
 
-    // Use LLM to score and explain each game's relevance, then apply text match boost
+    // Take top candidates for LLM scoring
+    const candidatesForScoring = textBoostedGames.slice(0, batchSize);
+
+    console.log(
+      `🔄 LLM scoring top ${candidatesForScoring.length}/${allGames.length} games for query: "${query}" (page ${page})`
+    );
+
+    // Use LLM to score and explain each candidate's relevance
     const scoredGames = await Promise.all(
-      allGames.map(async (game: any) => {
+      candidatesForScoring.map(async ({ game, textBoost }) => {
         const { score: llmScore, reason } = await scoreGameRelevance(
           query,
           game
         );
-        const textBoost = calculateTextMatchBoost(query, game);
         const finalScore = Math.min(llmScore + textBoost, 1.0); // Cap at 1.0
 
-        if (finalScore < 0.5) return null; // Filter out low-relevance games - be strict
+        if (finalScore < 0.3) return null; // Lower threshold since we pre-filtered
 
         return {
           game,
@@ -269,20 +300,33 @@ export async function searchGames(
       })
     );
 
-    // Filter out null results and convert to GameData
-    const candidates = scoredGames
+    // Filter out null results and sort by final score
+    const validResults = scoredGames
       .filter((result): result is NonNullable<typeof result> => result !== null)
-      .sort((a, b) => b.score - a.score)
-      .map(({ game, score, reason }) => convertToGameData(game, score, reason));
+      .sort((a, b) => b.score - a.score);
+
+    // Apply pagination to final results
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedResults = validResults.slice(startIndex, endIndex);
+
+    // Convert to GameData
+    const games = paginatedResults.map(({ game, score, reason }) =>
+      convertToGameData(game, score, reason)
+    );
 
     // Log top results with scoring breakdown for debugging
-    if (candidates.length > 0) {
-      console.log(`🎯 Top 3 results for "${query}":`);
-      candidates.slice(0, 3).forEach((game, i) => {
-        const result = scoredGames.find((r) => r?.game.app_id === game.appId);
+    if (games.length > 0) {
+      console.log(
+        `🎯 Page ${page} results for "${query}" (${games.length}/${validResults.length} total):`
+      );
+      games.slice(0, 3).forEach((game, i) => {
+        const result = paginatedResults[i];
         if (result) {
           console.log(
-            `${i + 1}. ${game.title} - Final: ${result.score.toFixed(
+            `${startIndex + i + 1}. ${
+              game.title
+            } - Final: ${result.score.toFixed(
               2
             )} (LLM: ${result.llmScore.toFixed(
               2
@@ -297,8 +341,8 @@ export async function searchGames(
     try {
       await supabase.from("searches").insert({
         original_query: query,
-        transformed_query: `LLM + text boost search`,
-        result_count: candidates.length,
+        transformed_query: `LLM + text boost search (page ${page})`,
+        result_count: games.length,
         processing_time_ms: processingTime,
         user_id: userId,
       });
@@ -307,10 +351,14 @@ export async function searchGames(
       // Don't fail the search if analytics fail
     }
 
-    return candidates;
+    return {
+      games,
+      totalCount: validResults.length,
+      hasMore: endIndex < validResults.length,
+    };
   } catch (error) {
     console.error("Search error:", error);
-    return [];
+    return { games: [], totalCount: 0, hasMore: false };
   }
 }
 

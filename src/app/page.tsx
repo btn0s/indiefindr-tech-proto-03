@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }): Promise<Metadata> {
   const query = (await searchParams).q;
 
@@ -42,9 +42,11 @@ export async function generateMetadata({
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const query = (await searchParams).q;
+  const params = await searchParams;
+  const query = params.q;
+  const page = parseInt(params.page || "1", 10);
 
   return (
     <div className="py-12">
@@ -58,8 +60,8 @@ export default async function Home({
         </div>
       </div>
 
-      <Suspense fallback={<GameGridSkeleton />} key={query}>
-        <SuspendedGameSearch query={query} />
+      <Suspense fallback={<GameGridSkeleton />} key={`${query}-${page}`}>
+        <SuspendedGameSearch query={query} page={page} />
       </Suspense>
     </div>
   );
