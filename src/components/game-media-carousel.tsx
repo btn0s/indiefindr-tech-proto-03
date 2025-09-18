@@ -38,41 +38,6 @@ export function GameMediaCarousel({ steamData }: GameMediaCarouselProps) {
     });
   }, [api]);
 
-  // Enhanced keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!api) return;
-
-      switch (event.key) {
-        case "ArrowLeft":
-          event.preventDefault();
-          api.scrollPrev();
-          break;
-        case "ArrowRight":
-          event.preventDefault();
-          api.scrollNext();
-          break;
-        case "Home":
-          event.preventDefault();
-          api.scrollTo(0);
-          break;
-        case "End":
-          event.preventDefault();
-          api.scrollTo(allImages.length - 1);
-          break;
-        case " ":
-        case "Enter":
-          event.preventDefault();
-          // Toggle between current and next image
-          const nextIndex = current < allImages.length - 1 ? current + 1 : 0;
-          api.scrollTo(nextIndex);
-          break;
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [api, current, allImages.length]);
 
   if (allImages.length === 0) {
     return (

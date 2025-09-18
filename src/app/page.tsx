@@ -11,7 +11,7 @@ export default async function Home({
   const query = (await searchParams).q;
 
   return (
-    <div className="container mx-auto px-6 py-12">
+    <div className="py-12">
       <div className="text-center">
         <h1 className="text-4xl font-bold">Indiefindr</h1>
         <p className="text-muted-foreground text-lg mb-6 max-w-lg mx-auto text-balance">
