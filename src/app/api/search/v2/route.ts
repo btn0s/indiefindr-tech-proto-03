@@ -7,15 +7,10 @@ import { GAMING_REFERENCE } from "@/lib/constants/gaming-reference";
 // Remove unused interface - we'll match the existing API structure
 
 function isNaturalLanguageQuery(query: string): boolean {
-  const indicators = [
-    query.includes(" like "),
-    query.includes(" with "),
-    query.includes(" that "),
-    query.split(" ").length > 3, // Lowered threshold so "games like X" triggers LLM
-    /\b(cozy|atmospheric|challenging|similar to|games like)\b/i.test(query),
-    /\b(I want|looking for|find me|recommend)\b/i.test(query),
-  ];
-  return indicators.some((indicator) => indicator);
+  // Only use LLM for truly conversational queries
+  return /\b(I want|I'm looking for|find me|recommend|something like|games like|similar to)\b/i.test(
+    query
+  );
 }
 
 async function generateAlgoliaQueries(
@@ -85,74 +80,36 @@ Return EXACTLY 10 words that capture the essence.`,
   }
 }
 
-function calculateAlgoliaScore(game: any): { score: number; reason: string } {
-  let score = 0;
-  const reasons: string[] = [];
+function calculateAlgoliaScore(
+  game: any,
+  algoliaRank: number
+): { score: number; reason: string } {
   const highlights = game._highlightResult || {};
+  const reasons: string[] = [];
 
-  // Enhanced field weights with more nuance
-  const fieldWeights = {
-    name: 20, // Title matches are gold
-    description: 15, // Short description is key
-    semantic_description: 25, // AI-curated content is premium
-    tags: 12, // Genre/category matches are important
-    categories: 8, // Steam categories matter
-    developers: 3, // Developer matches are nice but not crucial
-  };
+  // Trust Algolia's ranking as the primary score
+  let score = algoliaRank;
 
-  // Track match quality for bonus scoring
-  let hasNameMatch = false;
-  let hasSemanticMatch = false;
-  let totalMatchedWords = 0;
-
-  // Check each field for matches
-  Object.entries(fieldWeights).forEach(([field, weight]) => {
-    const highlight = highlights[field];
-    if (!highlight) return;
-
-    const items = Array.isArray(highlight) ? highlight : [highlight];
-
-    items.forEach((item: any) => {
-      const wordCount = item.matchedWords?.length || 0;
-      totalMatchedWords += wordCount;
-
-      if (item.matchLevel === "full") {
-        score += weight * 3; // Increased multiplier for full matches
-        reasons.push(`Perfect ${field} match`);
-        if (field === "name") hasNameMatch = true;
-      } else if (item.matchLevel === "partial") {
-        score += weight * wordCount * 0.8; // Increased partial match value
-        if (wordCount > 0) {
-          reasons.push(`"${item.matchedWords.join(", ")}" in ${field}`);
-          if (field === "semantic_description") hasSemanticMatch = true;
-        }
-      }
-    });
-  });
-
-  // Quality bonuses
-  if (hasNameMatch) score += 15; // Big bonus for title matches
-  if (hasSemanticMatch) score += 10; // Bonus for AI content matches
-  if (totalMatchedWords >= 3) score += 8; // Multi-word match bonus
-  if (totalMatchedWords >= 5) score += 12; // Rich query bonus
-
-  // Freshness bonus (newer games get slight boost)
-  if (!game.coming_soon && game.release_date) {
-    const releaseYear = new Date(game.release_date).getFullYear();
-    const currentYear = new Date().getFullYear();
-    if (currentYear - releaseYear <= 2) score += 3; // Recent games bonus
+  // Just collect match reasons for display
+  const nameHighlight = highlights.name;
+  if (nameHighlight?.matchedWords?.length > 0) {
+    reasons.push(`"${nameHighlight.matchedWords.join('", "')}" in title`);
   }
 
-  // Penalty for very sparse data
-  const hasRichData =
-    game.description && game.tags?.length > 1 && game.developers?.length > 0;
-  if (!hasRichData) score *= 0.8;
+  const descHighlight = highlights.description;
+  if (descHighlight?.matchedWords?.length > 0) {
+    reasons.push(`"${descHighlight.matchedWords.join('", "')}" in description`);
+  }
 
-  // Generate concise reason
-  const topReasons = reasons.slice(0, 2);
-  const reason = topReasons.length > 0 ? topReasons.join(", ") : "Search match";
+  const semanticHighlight = highlights.semantic_description;
+  if (semanticHighlight?.matchedWords?.length > 0) {
+    reasons.push("AI content match");
+  }
 
-  return { score: Math.round(score * 10) / 10, reason };
+  const reason =
+    reasons.length > 0 ? reasons.slice(0, 2).join(", ") : "Search match";
+
+  return { score, reason };
 }
 
 async function rankAndAnnotateResults(
@@ -161,10 +118,10 @@ async function rankAndAnnotateResults(
 ): Promise<any[]> {
   if (games.length === 0) return [];
 
-  // Score based on Algolia match data
+  // Score based on Algolia match data with original ranking
   return games
-    .map((game) => {
-      const { score, reason } = calculateAlgoliaScore(game);
+    .map((game, index) => {
+      const { score, reason } = calculateAlgoliaScore(game, index);
       return {
         ...game,
         score,
@@ -172,7 +129,7 @@ async function rankAndAnnotateResults(
       };
     })
     .filter((game) => game.score > 0) // Only keep games with actual matches
-    .sort((a, b) => b.score - a.score); // Sort by score descending
+    .sort((a, b) => a.score - b.score); // Sort by Algolia rank (ascending = better first)
 }
 
 export async function GET(request: NextRequest) {
@@ -216,11 +173,11 @@ export async function GET(request: NextRequest) {
 
       // Apply our intelligent scoring to keyword results too
       const scoredHits = hits
-        .map((game: any) => {
-          const { score, reason } = calculateAlgoliaScore(game);
+        .map((game: any, index: number) => {
+          const { score, reason } = calculateAlgoliaScore(game, index);
           return { ...game, score, matchReason: reason };
         })
-        .sort((a, b) => b.score - a.score);
+        .sort((a, b) => a.score - b.score); // Lower Algolia rank = better (ascending sort)
 
       // Apply pagination after scoring
       const startIndex = (page - 1) * pageSize;
