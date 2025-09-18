@@ -1,6 +1,7 @@
 import { searchGames, getAllGames } from "@/lib/search";
 import { NoGamesFound } from "@/components/no-games-found";
 import { GameListWithLoadMore } from "@/components/game-list-with-load-more";
+import { getApiUrl } from "@/lib/utils";
 
 export const SuspendedGameSearch = async ({
   query,
@@ -21,9 +22,9 @@ export const SuspendedGameSearch = async ({
       if (useNewSearch) {
         // Use the new search API
         const response = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
-          }/api/search-new?q=${encodeURIComponent(query)}&page=${page}`
+          `https://${getApiUrl()}/api/search-new?q=${encodeURIComponent(
+            query
+          )}&page=${page}`
         );
         if (!response.ok) throw new Error("Search failed");
         const result = await response.json();
