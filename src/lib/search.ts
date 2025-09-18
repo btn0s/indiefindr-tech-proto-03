@@ -13,22 +13,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Simple cache
-const cache = new Map<string, { data: any; expires: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-function getFromCache<T>(key: string): T | null {
-  const item = cache.get(key);
-  if (!item || Date.now() > item.expires) {
-    cache.delete(key);
-    return null;
-  }
-  return item.data;
-}
-
-function setCache<T>(key: string, data: T): void {
-  cache.set(key, { data, expires: Date.now() + CACHE_TTL });
-}
 
 function convertToGameData(game: any, similarity: number = 1): GameData {
   const steamData = game.steam_data;
@@ -124,6 +108,29 @@ Output should be a focused string of relevant keywords and phrases, not full sen
   }
 }
 
+async function getTextMatches(query: string): Promise<any[]> {
+  try {
+    const { data: allGames, error } = await supabase
+      .from("games")
+      .select("app_id, semantic_description, embedding, steam_data")
+      .eq("status", "ready");
+
+    if (error || !allGames) {
+      console.error("Text search error:", error);
+      return [];
+    }
+
+    // Search through the entire Steam JSON data
+    return allGames.filter((game: any) => {
+      const steamDataText = JSON.stringify(game.steam_data).toLowerCase();
+      return steamDataText.includes(query.toLowerCase());
+    });
+  } catch (error) {
+    console.error("Text search error:", error);
+    return [];
+  }
+}
+
 export async function searchGames(
   query: string,
   userId?: string
@@ -132,25 +139,24 @@ export async function searchGames(
     return getAllGames();
   }
 
-  const cacheKey = `search:${query.toLowerCase()}`;
-  const cached = getFromCache<GameData[]>(cacheKey);
-  if (cached) return cached;
-
   const startTime = Date.now();
 
   try {
+    // Get text matches first (fast, exact keyword matching)
+    const textMatches = await getTextMatches(query);
+
     // Transform natural language query into rich semantic description
     const semanticQuery = await transformQuery(query);
     console.log(`🔄 Query transformation: "${query}" → "${semanticQuery}"`);
 
-    // Get query embedding
+    // Get query embedding for semantic search
     const { embedding: queryEmbedding } = await embed({
       model: models.embeddingModel,
       value: semanticQuery,
     });
 
-    // Load games from database
-    const { data: games, error } = await supabase
+    // Load all games for semantic search
+    const { data: allGames, error } = await supabase
       .from("games")
       .select("app_id, semantic_description, embedding, steam_data")
       .eq("status", "ready");
@@ -160,13 +166,16 @@ export async function searchGames(
       return [];
     }
 
-    if (!games || games.length === 0) {
+    if (!allGames || allGames.length === 0) {
       return [];
     }
 
-    // Find similar games
+    // Create a map for quick lookup
+    const textMatchIds = new Set(textMatches.map((game) => game.app_id));
+
+    // Find similar games with hybrid scoring
     const threshold = 0.5;
-    const candidates = games
+    const candidates = allGames
       .map((game: any) => {
         if (!game.embedding) return null;
 
@@ -176,10 +185,34 @@ export async function searchGames(
             ? JSON.parse(game.embedding)
             : game.embedding;
 
-        const similarity = cosineSimilarity(queryEmbedding, gameEmbedding);
-        if (similarity < threshold) return null;
+        const semanticSimilarity = cosineSimilarity(
+          queryEmbedding,
+          gameEmbedding
+        );
+        const hasTextMatch = textMatchIds.has(game.app_id);
 
-        return convertToGameData(game, similarity);
+        // Hybrid scoring: combine text matching with semantic similarity
+        let finalSimilarity = semanticSimilarity;
+
+        if (hasTextMatch) {
+          // Check for exact title match first
+          const title = game.steam_data.name?.toLowerCase() || "";
+          const normalizedQuery = query.toLowerCase().trim();
+
+          if (title === normalizedQuery) {
+            // Exact title match gets perfect score
+            finalSimilarity = 1.0;
+          } else {
+            // Other text matches get a significant boost
+            finalSimilarity = Math.max(0.8, semanticSimilarity * 1.3);
+          }
+        }
+
+        // Lower threshold for text matches since they're more precise
+        const minThreshold = hasTextMatch ? 0.3 : threshold;
+        if (finalSimilarity < minThreshold) return null;
+
+        return convertToGameData(game, finalSimilarity);
       })
       .filter((game): game is GameData => game !== null)
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
@@ -200,7 +233,6 @@ export async function searchGames(
       // Don't fail the search if analytics fail
     }
 
-    setCache(cacheKey, candidates);
     return candidates;
   } catch (error) {
     console.error("Search error:", error);
@@ -209,10 +241,6 @@ export async function searchGames(
 }
 
 export async function getAllGames(): Promise<GameData[]> {
-  const cacheKey = "all_games";
-  const cached = getFromCache<GameData[]>(cacheKey);
-  if (cached) return cached;
-
   try {
     const { data: games, error } = await supabase
       .from("games")
@@ -225,7 +253,6 @@ export async function getAllGames(): Promise<GameData[]> {
     }
 
     const allGames = games.map((game: any) => convertToGameData(game, 1));
-    setCache(cacheKey, allGames);
     return allGames;
   } catch (error) {
     console.error("Error loading games:", error);

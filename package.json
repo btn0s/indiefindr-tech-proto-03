@@ -7,10 +7,9 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "gather": "pnpx tsx src/lib/ai/0-gather.ts",
-    "enrich": "pnpx tsx src/lib/ai/1-enrich.ts",
-    "gen-metadata": "pnpx tsx src/lib/ai/2-generate-metadata.ts",
-    "embed": "pnpx tsx src/lib/ai/3-embed-and-save.ts",
+    "hunt": "pnpx tsx src/lib/ai/0-hunt.ts",
+    "enhance": "pnpx tsx src/lib/ai/1-enhance.ts",
+    "process": "pnpx tsx src/lib/ai/2-process.ts",
     "run-pipeline": "pnpx tsx src/lib/ai/pipeline.ts"
   },
   "dependencies": {

@@ -23,29 +23,49 @@ async function generateSemanticDescription(steamData: any): Promise<string> {
     .replace(/\s+/g, " ")
     .trim();
 
+  // Extract additional context from Steam data
+  const categories = (steamData.categories || [])
+    .map((c: any) => c.description)
+    .join(", ");
+  const developers = (steamData.developers || []).join(", ");
+  const tags = (steamData.genres || [])
+    .map((g: any) => g.description)
+    .join(", ");
+
   const context = `
 Game: ${steamData.name}
-Genres: ${(steamData.genres || []).map((g: any) => g.description).join(", ")}
+Genres: ${tags}
+Categories: ${categories}
+Developer: ${developers}
 Description: ${cleanDescription}
 `.trim();
 
   try {
     const { text } = await generateText({
       model: models.chatModelMini,
-      temperature: 0.3,
-      system: `Create a concise semantic description for indie game search using keywords and phrases.
+      temperature: 0.5,
+      system: `You are an expert in indie gaming who creates semantic descriptions for game discovery. Generate focused, keyword-rich descriptions that capture the essence of each game.
 
-Focus on: gameplay mechanics, visual style, themes, genres, and player experience.
+Focus on extracting:
+- Core gameplay mechanics (combat, puzzle, exploration, building, crafting, etc.)
+- Game genres and subgenres (roguelike, metroidvania, soulslike, etc.)
+- Visual and aesthetic style (pixel art, minimalist, hand-drawn, atmospheric, etc.)
+- Emotional tone and themes (cozy, challenging, dark, whimsical, narrative-driven, etc.)
+- Player experience (single-player, multiplayer, co-op, competitive, casual, hardcore, etc.)
+- Unique mechanics or standout features
 
-Use this style - short keyword phrases separated by spaces:
-"action RPG roguelike combat progression mythology challenging fast-paced isometric dungeon-crawler"
-"peaceful simulation crafting exploration cozy atmosphere casual wholesome management"
-"multiplayer cooperative puzzle-solving teamwork strategy social deduction"
+Gaming terminology expertise:
+- Recognize genre-defining terms and mechanics
+- Understand indie gaming conventions and styles  
+- Identify key differentiators that players search for
+- Extract both explicit and implicit gameplay elements
 
-Keep it under 20 keywords/phrases. Be specific and searchable.`,
-      prompt: context,
+Output format: Concise keyword phrases and descriptive terms, focusing on searchability and semantic richness. Avoid marketing fluff - focus on what players actually experience.
+
+Keep descriptions under 25 keywords/phrases for optimal search performance.`,
+      prompt: `Analyze this game data and create a semantic description for search discovery:\n\n${context}`,
     });
-    return text;
+    return text.trim();
   } catch (error) {
     console.error(`Failed to generate description for ${steamData.name}`);
     return cleanDescription;
