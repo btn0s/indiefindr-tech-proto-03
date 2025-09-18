@@ -3,7 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SearchIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
 
@@ -16,6 +16,7 @@ export function SearchBox({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isValid, setIsValid] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   const searchParams = useSearchParams();
   const q = searchParams.get("q")?.toString() ?? "";
@@ -30,12 +31,16 @@ export function SearchBox({
     if (term && term.length >= 3) {
       const params = new URLSearchParams(searchParams);
       params.set("q", term);
-      router.push(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
       setIsValid(true);
     } else if (term.length === 0) {
       const params = new URLSearchParams(searchParams);
       params.delete("q");
-      router.push(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
       setIsValid(true);
     } else {
       setIsValid(false);
@@ -52,7 +57,9 @@ export function SearchBox({
   };
 
   const resetQuery = () => {
-    router.push("/");
+    startTransition(() => {
+      router.push("/");
+    });
     if (inputRef.current) {
       inputRef.current.value = "";
       inputRef.current?.focus();
@@ -88,7 +95,7 @@ export function SearchBox({
           </div>
           <Button
             type="submit"
-            disabled={disabled}
+            disabled={disabled || isPending}
             className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             size="icon"
           >

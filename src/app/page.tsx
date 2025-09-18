@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { SuspendedGameSearch } from "@/components/suspended-game-search";
 import { GameGridSkeleton } from "@/components/game-grid-skeleton";
-import { searchGames } from "@/lib/search";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -13,46 +12,18 @@ export async function generateMetadata({
   const query = (await searchParams).q;
 
   if (query) {
-    try {
-      const results = await searchGames(query);
-      const count = results.length;
-      const hasGamesWord = query.toLowerCase().includes("games");
-      const queryText = hasGamesWord ? query : `${query} games`;
+    const hasGamesWord = query.toLowerCase().includes("games");
+    const queryText = hasGamesWord ? query : `${query} games`;
 
-      if (count === 0) {
-        return {
-          title: `No ${queryText} found on Indiefindr`,
-          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-          openGraph: {
-            title: `No ${queryText} found on Indiefindr`,
-            description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-            images: ["/og.png"],
-          },
-        };
-      }
-
-      return {
-        title: `${count} ${queryText} on Indiefindr`,
+    return {
+      title: `Search ${queryText} on Indiefindr`,
+      description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+      openGraph: {
+        title: `Search ${queryText} on Indiefindr`,
         description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-        openGraph: {
-          title: `${count} ${queryText} on Indiefindr`,
-          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-          images: ["/og.png"],
-        },
-      };
-    } catch (error) {
-      const hasGamesWord = query.toLowerCase().includes("games");
-      const queryText = hasGamesWord ? query : `${query} games`;
-      return {
-        title: `Discover ${queryText} on Indiefindr`,
-        description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-        openGraph: {
-          title: `Discover ${queryText} on Indiefindr`,
-          description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
-          images: ["/og.png"],
-        },
-      };
-    }
+        images: ["/og.png"],
+      },
+    };
   }
 
   return {
