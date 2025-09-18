@@ -1,6 +1,6 @@
 import { searchGames, getAllGames } from "@/lib/search";
 import { NoGamesFound } from "@/components/no-games-found";
-import { GameGrid } from "@/components/game-grid";
+import { GameListWithLoadMore } from "@/components/game-list-with-load-more";
 
 export const SuspendedGameSearch = async ({
   query,
@@ -41,13 +41,11 @@ export const SuspendedGameSearch = async ({
   }
 
   return (
-    <div>
-      <GameGrid games={games} query={query} />
-      {hasMore && (
-        <div className="text-center mt-8 text-muted-foreground">
-          Showing {games.length} of {totalCount} results
-        </div>
-      )}
-    </div>
+    <GameListWithLoadMore
+      initialGames={games}
+      query={query}
+      initialHasMore={hasMore}
+      initialTotalCount={totalCount}
+    />
   );
 };
