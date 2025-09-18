@@ -60,6 +60,31 @@ indie platformer`,
     .filter((line) => line.trim().length > 0);
 }
 
+async function generateQueryVibe(originalQuery: string): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model: models.chatModelMini,
+      temperature: 0.7,
+      system: `You are an expert at capturing the essence of gaming queries in exactly 10 words.
+
+Extract the core vibe/mood/feeling the user wants from their query.
+
+Examples:
+"cozy farming games" → "relaxing peaceful farming simulation with wholesome creative gameplay elements"
+"challenging platformers" → "difficult precise jumping games requiring skill mastery and patience"
+"games like amongus" → "social deduction multiplayer suspense betrayal mystery with friends"
+
+Return EXACTLY 10 words that capture the essence.`,
+      prompt: `Extract the 10-word vibe for: "${originalQuery}"`,
+    });
+
+    return text.trim().split(" ").slice(0, 10).join(" ");
+  } catch (error) {
+    console.error("Failed to generate query vibe:", error);
+    return `games matching ${originalQuery.split(" ").slice(0, 6).join(" ")}`;
+  }
+}
+
 function calculateAlgoliaScore(game: any): { score: number; reason: string } {
   let score = 0;
   const reasons: string[] = [];
@@ -181,9 +206,13 @@ export async function GET(request: NextRequest) {
     // Complex query - LLM enhanced flow
     console.log(`🧠 Using LLM-enhanced search for: "${query}"`);
 
-    // Step 1: Generate multiple Algolia queries
-    const algoliaQueries = await generateAlgoliaQueries(query);
+    // Step 1: Generate multiple Algolia queries + vibe (in parallel)
+    const [algoliaQueries, queryVibe] = await Promise.all([
+      generateAlgoliaQueries(query),
+      generateQueryVibe(query),
+    ]);
     console.log(`📝 Generated queries:`, algoliaQueries);
+    console.log(`✨ Query vibe:`, queryVibe);
 
     // Step 2: Search Algolia with all queries in parallel
     const searchPromises = algoliaQueries.map((q) =>
@@ -225,12 +254,41 @@ export async function GET(request: NextRequest) {
     // Step 5: Apply pagination to final results
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    const paginatedGames = rankedGames.slice(startIndex, endIndex);
+    // Step 5.5: Generate explanations for paginated games in parallel
+    const paginatedGamesWithExplanations = await Promise.all(
+      rankedGames.slice(startIndex, endIndex).map(async (game) => {
+        try {
+          const { text } = await generateText({
+            model: models.chatModelMini,
+            temperature: 0.6,
+            system: `Create a 1-sentence compelling explanation for why this game matches what the user wants. Be enthusiastic and specific.`,
+            prompt: `User wants: "${queryVibe}"
+Game: "${game.name}" - ${game.description || "No description"}
+Why this matches:`,
+          });
+
+          return { ...game, whyExplanation: text.trim() };
+        } catch (error) {
+          return {
+            ...game,
+            whyExplanation: `Perfect match for your ${queryVibe
+              .split(" ")
+              .slice(0, 3)
+              .join(" ")} vibe!`,
+          };
+        }
+      })
+    );
+
+    console.log(
+      `✨ Generated explanations for ${paginatedGamesWithExplanations.length} games`
+    );
 
     return NextResponse.json({
-      games: paginatedGames,
+      games: paginatedGamesWithExplanations,
       totalCount: rankedGames.length,
       hasMore: endIndex < rankedGames.length,
+      queryVibe,
     });
   } catch (error) {
     console.error("Search-new API error:", error);

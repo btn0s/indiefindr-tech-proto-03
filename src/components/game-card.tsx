@@ -55,8 +55,10 @@ export const GameCard = ({
           {/* {game.releaseDate && <div>Release: {game.releaseDate}</div>} */}
         </div>
 
-        {game.matchReason && (
-          <div className="text-xs text-foreground mb-4">{game.matchReason}</div>
+        {game.whyExplanation && (
+          <div className="text-xs text-foreground mb-4">
+            {game.whyExplanation.replace(/^"|"$/g, "")}
+          </div>
         )}
 
         <div className="flex flex-wrap gap-1">
