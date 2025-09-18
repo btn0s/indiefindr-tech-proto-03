@@ -26,6 +26,12 @@ export async function generateMetadata({
         description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
         images: ["/og.png"],
       },
+      twitter: {
+        title: `${queryText} on Indiefindr`,
+        description: `Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.`,
+        images: ["/og.png"],
+        card: "summary_large_image",
+      },
     };
   }
 
@@ -38,6 +44,13 @@ export async function generateMetadata({
       description:
         "Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.",
       images: ["/og.png"],
+    },
+    twitter: {
+      title: "Indiefindr - Discover Your Next Favorite Indie Game",
+      description:
+        "Indiefindr surfaces the best new indie games that get buried on popular storefronts. Discover hidden gems you'll actually love.",
+      images: ["/og.png"],
+      card: "summary_large_image",
     },
   };
 }

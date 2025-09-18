@@ -40,6 +40,12 @@ export async function generateMetadata({
       description: description,
       images: steamData.header_image ? [steamData.header_image] : ["/og.png"],
     },
+    twitter: {
+      title: `${title} is on Indiefindr`,
+      description: description,
+      images: steamData.header_image ? [steamData.header_image] : ["/og.png"],
+      card: "summary_large_image",
+    },
   };
 }
 
