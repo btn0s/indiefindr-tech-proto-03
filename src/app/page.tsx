@@ -61,7 +61,7 @@ export default async function Home({
       </div>
 
       <Suspense fallback={<GameGridSkeleton />} key={`${query}-${page}`}>
-        <SuspendedGameSearch query={query} page={page} />
+        <SuspendedGameSearch query={query} page={page} useNewSearch={true} />
       </Suspense>
     </div>
   );

@@ -5,9 +5,11 @@ import { GameListWithLoadMore } from "@/components/game-list-with-load-more";
 export const SuspendedGameSearch = async ({
   query,
   page = 1,
+  useNewSearch = false,
 }: {
   query?: string;
   page?: number;
+  useNewSearch?: boolean;
 }) => {
   let games: any[] = [];
   let totalCount = 0;
@@ -16,10 +18,25 @@ export const SuspendedGameSearch = async ({
 
   try {
     if (query && query.trim()) {
-      const result = await searchGames(query, undefined, page);
-      games = result.games;
-      totalCount = result.totalCount;
-      hasMore = result.hasMore;
+      if (useNewSearch) {
+        // Use the new search API
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
+          }/api/search-new?q=${encodeURIComponent(query)}&page=${page}`
+        );
+        if (!response.ok) throw new Error("Search failed");
+        const result = await response.json();
+        games = result.games;
+        totalCount = result.totalCount;
+        hasMore = result.hasMore;
+      } else {
+        // Use the original search function
+        const result = await searchGames(query, undefined, page);
+        games = result.games;
+        totalCount = result.totalCount;
+        hasMore = result.hasMore;
+      }
     } else {
       const allGames = await getAllGames();
       const startIndex = (page - 1) * 20;
