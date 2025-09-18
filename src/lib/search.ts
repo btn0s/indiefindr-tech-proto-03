@@ -92,11 +92,58 @@ function extractPlayModes(steamData: any): string[] {
   return Array.from(playModes);
 }
 
-function cosineSimilarity(a: number[], b: number[]): number {
-  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
-  const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-  const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-  return dotProduct / (magnitudeA * magnitudeB);
+function calculateTextMatchBoost(query: string, game: any): number {
+  const queryLower = query.toLowerCase();
+  const steamData = game.steam_data;
+
+  let boost = 0;
+
+  // Exact title match gets highest boost
+  if (steamData.name?.toLowerCase().includes(queryLower)) {
+    boost += 0.5;
+  }
+
+  // Genre matches get good boost
+  const genres = (steamData.genres || []).map((g: any) =>
+    g.description.toLowerCase()
+  );
+  if (
+    genres.some(
+      (genre: string) =>
+        genre.includes(queryLower) || queryLower.includes(genre)
+    )
+  ) {
+    boost += 0.3;
+  }
+
+  // Developer/publisher matches
+  const developers = (steamData.developers || []).map((d: string) =>
+    d.toLowerCase()
+  );
+  const publishers = (steamData.publishers || []).map((p: string) =>
+    p.toLowerCase()
+  );
+  if (
+    developers.some((dev: string) => dev.includes(queryLower)) ||
+    publishers.some((pub: string) => pub.includes(queryLower))
+  ) {
+    boost += 0.2;
+  }
+
+  // Description matches get smaller boost
+  if (steamData.short_description?.toLowerCase().includes(queryLower)) {
+    boost += 0.1;
+  }
+
+  // Tags/categories matches
+  const categories = (steamData.categories || []).map((c: any) =>
+    c.description.toLowerCase()
+  );
+  if (categories.some((cat: string) => cat.includes(queryLower))) {
+    boost += 0.15;
+  }
+
+  return Math.min(boost, 0.8); // Cap boost at 0.8 so LLM score still matters
 }
 
 async function scoreGameRelevance(
@@ -170,29 +217,6 @@ Create an appealing connection for users who searched "${query}":`,
   }
 }
 
-async function getTextMatches(query: string): Promise<any[]> {
-  try {
-    const { data: allGames, error } = await supabase
-      .from("games")
-      .select("app_id, semantic_description, embedding, steam_data")
-      .eq("status", "ready");
-
-    if (error || !allGames) {
-      console.error("Text search error:", error);
-      return [];
-    }
-
-    // Search through the entire Steam JSON data
-    return allGames.filter((game: any) => {
-      const steamDataText = JSON.stringify(game.steam_data).toLowerCase();
-      return steamDataText.includes(query.toLowerCase());
-    });
-  } catch (error) {
-    console.error("Text search error:", error);
-    return [];
-  }
-}
-
 export async function searchGames(
   query: string,
   userId?: string
@@ -223,16 +247,23 @@ export async function searchGames(
       `🔄 LLM scoring ${allGames.length} games for query: "${query}"`
     );
 
-    // Use LLM to score and explain each game's relevance
+    // Use LLM to score and explain each game's relevance, then apply text match boost
     const scoredGames = await Promise.all(
       allGames.map(async (game: any) => {
-        const { score, reason } = await scoreGameRelevance(query, game);
+        const { score: llmScore, reason } = await scoreGameRelevance(
+          query,
+          game
+        );
+        const textBoost = calculateTextMatchBoost(query, game);
+        const finalScore = Math.min(llmScore + textBoost, 1.0); // Cap at 1.0
 
-        if (score < 0.5) return null; // Filter out low-relevance games - be strict
+        if (finalScore < 0.5) return null; // Filter out low-relevance games - be strict
 
         return {
           game,
-          score,
+          score: finalScore,
+          llmScore,
+          textBoost,
           reason,
         };
       })
@@ -244,12 +275,29 @@ export async function searchGames(
       .sort((a, b) => b.score - a.score)
       .map(({ game, score, reason }) => convertToGameData(game, score, reason));
 
+    // Log top results with scoring breakdown for debugging
+    if (candidates.length > 0) {
+      console.log(`🎯 Top 3 results for "${query}":`);
+      candidates.slice(0, 3).forEach((game, i) => {
+        const result = scoredGames.find((r) => r?.game.app_id === game.appId);
+        if (result) {
+          console.log(
+            `${i + 1}. ${game.title} - Final: ${result.score.toFixed(
+              2
+            )} (LLM: ${result.llmScore.toFixed(
+              2
+            )} + Text: ${result.textBoost.toFixed(2)})`
+          );
+        }
+      });
+    }
+
     // Save search analytics
     const processingTime = Date.now() - startTime;
     try {
       await supabase.from("searches").insert({
         original_query: query,
-        transformed_query: `LLM-scored search`,
+        transformed_query: `LLM + text boost search`,
         result_count: candidates.length,
         processing_time_ms: processingTime,
         user_id: userId,
