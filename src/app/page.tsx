@@ -22,20 +22,20 @@ export async function generateMetadata({
       if (count === 0) {
         return {
           title: `No ${queryText} found on Indiefindr`,
-          description: `We couldn't find any indie ${queryText}. Try a different search or discover other amazing indie games on Indiefindr.`,
+          description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
         };
       }
 
       return {
         title: `${count} ${queryText} on Indiefindr`,
-        description: `Discover ${count} amazing indie ${queryText} with AI-powered recommendations and honest explanations on Indiefindr.`,
+        description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
       };
     } catch (error) {
       const hasGamesWord = query.toLowerCase().includes("games");
       const queryText = hasGamesWord ? query : `${query} games`;
       return {
         title: `Discover ${queryText} on Indiefindr`,
-        description: `Find the best indie ${queryText}. Discover hidden gems and your next favorite indie game on Indiefindr.`,
+        description: `Stop endlessly scrolling Steam. Indiefindr helps you find indie games you'll actually love, not just browse forever.`,
       };
     }
   }
@@ -43,7 +43,7 @@ export async function generateMetadata({
   return {
     title: "Indiefindr - Discover Your Next Favorite Indie Game",
     description:
-      "Discover your next favorite indie game with AI-powered recommendations and honest explanations.",
+      "Stop endlessly scrolling Steam. Find indie games you'll actually love with Indiefindr.",
   };
 }
 

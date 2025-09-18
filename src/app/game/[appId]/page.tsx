@@ -39,7 +39,7 @@ export async function generateMetadata({
     (steamData.is_free ? "Free" : "");
 
   return {
-    title: `${title} - Indie Game on Indiefindr`,
+    title: `${title} is on Indiefindr`,
     description: `${description} Developed by ${developer}. ${
       genres ? `Genres: ${genres}. ` : ""
     }${
