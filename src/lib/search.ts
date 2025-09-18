@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { embed, generateText } from "ai";
 import { GameData } from "@/lib/types";
 import models from "@/lib/ai/models";
+import fs from "fs";
+import path from "path";
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,6 +15,23 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Load gaming reference once
+let gamingReference: string | null = null;
+function getGamingReference(): string {
+  if (!gamingReference) {
+    try {
+      const referencePath = path.join(
+        process.cwd(),
+        "src/lib/gaming-reference.txt"
+      );
+      gamingReference = fs.readFileSync(referencePath, "utf-8");
+    } catch (error) {
+      console.error("Failed to load gaming reference:", error);
+      gamingReference = "";
+    }
+  }
+  return gamingReference;
+}
 
 function convertToGameData(
   game: any,
@@ -85,26 +104,44 @@ async function scoreGameRelevance(
   game: any
 ): Promise<{ score: number; reason: string }> {
   try {
+    const gamingRef = getGamingReference();
+
     const { text } = await generateText({
       model: models.chatModelMini,
       temperature: 0.4,
-      system: `You are an enthusiastic game curator helping users discover games they might enjoy. Create compelling connections using "if you like X, you'll like this" style explanations.
+      system: `You are an expert indie game curator with deep knowledge of gaming genres and terminology. Use the reference below to understand what users are looking for.
+
+${gamingRef}
+
+Be STRICT about genre matches - only recommend games that actually fit what the user wants.
 
 Return ONLY this format:
 SCORE: [0-10]
 REASON: [exactly 20 words max, use "If you like..." or "Like X but with..." style]
 
+Scoring Guidelines:
+- 8-10: Perfect genre match with core mechanics
+- 6-7: Strong connection with similar gameplay elements  
+- 4-5: Some overlapping mechanics but different genre
+- 2-3: Weak thematic connection only
+- 0-1: No real connection - BE HONEST, don't force connections
+
+For highly specific genres (like "suika", "soulslike", "metroidvania"):
+- Be VERY strict - only score high if the game actually has the core mechanics
+- Don't give points just for being "challenging" or "puzzle-like"
+- A score of 0 is perfectly fine if there's no real match
+
 Examples:
 SCORE: 9
-REASON: If you like roguelikes, you'll love this deckbuilding twist on classic dungeon crawling mechanics.
+REASON: If you like Suika games, you'll love this physics-based puzzle with satisfying merging mechanics.
 
 SCORE: 7  
-REASON: Like roguelikes but prefer strategy? This combines tactical combat with progressive difficulty and exploration.
+REASON: Like Suika but prefer strategy? This combines spatial reasoning with tactical combat elements.
 
-SCORE: 5
-REASON: If you enjoy challenging games, this offers similar strategic depth with unique boss encounters.
+SCORE: 2
+REASON: If you enjoy puzzle games, this offers different mechanics but similar satisfying progression.
 
-Focus on positive appeal and connections. Make users excited to try the game.`,
+Focus on accurate genre understanding and positive connections. Make users excited to discover new games.`,
       prompt: `User searched for: "${query}"
 
 Game: "${game.steam_data.name}"
@@ -191,7 +228,7 @@ export async function searchGames(
       allGames.map(async (game: any) => {
         const { score, reason } = await scoreGameRelevance(query, game);
 
-        if (score < 0.3) return null; // Filter out low-relevance games
+        if (score < 0.5) return null; // Filter out low-relevance games - be strict
 
         return {
           game,

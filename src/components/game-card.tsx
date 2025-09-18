@@ -35,7 +35,7 @@ export const GameCard = ({ game }: { game: GameData }) => {
         </div>
 
         {game.matchReason && (
-          <div className="text-xs text-foreground mb-2">{game.matchReason}</div>
+          <div className="text-xs text-foreground mb-4">{game.matchReason}</div>
         )}
 
         <div className="flex flex-wrap gap-1">
