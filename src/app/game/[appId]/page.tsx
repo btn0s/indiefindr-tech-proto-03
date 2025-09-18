@@ -39,14 +39,14 @@ export async function generateMetadata({
     (steamData.is_free ? "Free" : "");
 
   return {
-    title: `${title} - Hidden Indie Gem on Indiefindr`,
+    title: `${title} is on Indiefindr`,
     description: `${description} Developed by ${developer}. ${
       genres ? `Genres: ${genres}. ` : ""
     }${
       price ? `Price: ${price}. ` : ""
     }A hidden indie gem that deserves attention.`.trim(),
     openGraph: {
-      title: `${title} - Hidden Indie Gem`,
+      title: `${title} - Hidden Indie Gem on Indiefindr`,
       description: description,
       images: ["/og.png"],
     },
