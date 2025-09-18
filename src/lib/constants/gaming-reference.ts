@@ -1,0 +1,140 @@
+export const GAMING_REFERENCE = `GAMING GENRE AND TERMINOLOGY REFERENCE
+
+=== PUZZLE GAME GENRES ===
+
+Suika Game / Suikalike:
+- Physics-based dropping puzzle games
+- Players drop fruit/objects that merge when identical ones touch
+- Goal: combine smaller fruits into larger ones (watermelon is highest)
+- Mechanics: gravity, physics simulation, spatial reasoning, chain reactions
+- Appeal: satisfying merging, high score chasing, simple but deep gameplay
+- Examples: Suika Game, 2048 (grid-based version), similar physics puzzlers
+
+Tetris-like:
+- Falling block puzzle games
+- Line clearing mechanics
+- Spatial reasoning and quick reflexes
+- Pattern recognition and planning ahead
+
+2048-like:
+- Grid-based number combining
+- Sliding mechanics to merge identical numbers
+- Mathematical progression (2→4→8→16→32...)
+- Strategic planning and spatial awareness
+
+=== ACTION GAME GENRES ===
+
+Roguelike:
+- Procedurally generated levels/dungeons
+- Permadeath (lose progress when you die)
+- Turn-based or real-time combat
+- Random loot and encounters
+- High replayability due to randomness
+- Examples: Hades, Dead Cells, The Binding of Isaac
+
+Soulslike:
+- Challenging combat with stamina management
+- Death penalties (lose souls/currency)
+- Dark, atmospheric worlds
+- Pattern-based boss fights
+- Emphasis on learning from failure
+- Examples: Dark Souls series, Hollow Knight, Salt and Sanctuary
+
+Metroidvania:
+- Interconnected world map
+- Ability-gated progression (need new powers to access areas)
+- Backtracking with new abilities
+- Exploration and discovery focus
+- Examples: Metroid, Castlevania, Hollow Knight
+
+=== SIMULATION GENRES ===
+
+Management Sims:
+- Resource management
+- Building and expansion
+- Economic systems
+- Strategic planning
+- Examples: SimCity, RollerCoaster Tycoon, Two Point Hospital
+
+Life Sims:
+- Character development and relationships
+- Daily life activities
+- Social interactions
+- Personal growth mechanics
+- Examples: The Sims, Stardew Valley, Animal Crossing
+
+=== EMOTIONAL TONES ===
+
+Cozy Games:
+- Low-stress, relaxing gameplay
+- Wholesome themes and aesthetics
+- Often feature crafting, building, or social elements
+- No time pressure or failure states
+- Examples: Stardew Valley, Animal Crossing, A Short Hike
+
+Challenging Games:
+- High difficulty requiring skill mastery
+- Learning through failure
+- Precision-based mechanics
+- Sense of accomplishment when overcome
+- Examples: Dark Souls, Celeste, Super Meat Boy
+
+=== MULTIPLAYER TYPES ===
+
+Co-op:
+- Cooperative gameplay with friends
+- Shared objectives and teamwork
+- Often supports 2-4 players
+- Examples: It Takes Two, Portal 2, Overcooked
+
+PvP (Player vs Player):
+- Competitive multiplayer
+- Direct competition between players
+- Ranking/ladder systems
+- Examples: Street Fighter, Among Us, Fall Guys
+
+=== VISUAL STYLES ===
+
+Pixel Art:
+- Retro-inspired 8-bit or 16-bit graphics
+- Nostalgic aesthetic
+- Often indie games
+- Examples: Celeste, Hyper Light Drifter, Stardew Valley
+
+Hand-drawn/Artistic:
+- Unique art styles
+- Often 2D animation
+- Distinctive visual identity
+- Examples: Cuphead, Ori series, Gris
+
+=== COMMON GAMING APPEALS ===
+
+Progression Systems:
+- Character leveling and skill trees
+- Unlockable content and achievements
+- Sense of growth and advancement
+
+Exploration:
+- Discovery of new areas and secrets
+- Environmental storytelling
+- Sense of wonder and adventure
+
+Narrative:
+- Story-driven experiences
+- Character development
+- Emotional engagement
+
+Strategy:
+- Planning and tactical thinking
+- Resource management
+- Decision-making with consequences
+
+Creativity:
+- Building and crafting systems
+- Player expression through creation
+- Customization options
+
+Social:
+- Playing with friends
+- Community features
+- Sharing experiences`;

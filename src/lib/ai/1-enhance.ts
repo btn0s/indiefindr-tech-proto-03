@@ -3,6 +3,24 @@ import dEnv from "../dotenv";
 
 dEnv();
 
+// Algolia configuration
+const ALGOLIA_APP_ID = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+const ALGOLIA_ADMIN_KEY = process.env.ALGOLIA_ADMIN_KEY;
+const ALGOLIA_INDEX_NAME = process.env.ALGOLIA_INDEX_NAME || "games";
+
+// Initialize Algolia client (optional - only if env vars are present)
+let algoliaClient: any = null;
+let algoliaIndex: any = null;
+
+if (ALGOLIA_APP_ID && ALGOLIA_ADMIN_KEY) {
+  const algoliasearch = require("algoliasearch");
+  algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+  algoliaIndex = algoliaClient.initIndex(ALGOLIA_INDEX_NAME);
+  console.log("✓ Algolia client initialized - will upload enhanced games");
+} else {
+  console.log("⚠️ Algolia env vars not found - skipping Algolia upload");
+}
+
 // ========== CONFIGURATION CONSTANTS ==========
 
 // Steam API configuration
@@ -122,6 +140,51 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function uploadToAlgolia(
+  appId: string,
+  steamUrl: string,
+  steamData: any
+): Promise<boolean> {
+  if (!algoliaIndex) return false;
+
+  try {
+    const algoliaRecord = {
+      objectID: appId,
+      app_id: appId,
+      steam_url: steamUrl,
+      status: "enhanced",
+      discovered_at: Date.now(),
+      // Steam data fields
+      name: steamData.name,
+      description: steamData.short_description || steamData.about_the_game,
+      detailed_description: steamData.detailed_description,
+      header_image: steamData.header_image,
+      price:
+        steamData.price_overview?.final_formatted ||
+        (steamData.is_free ? "Free" : ""),
+      developers: steamData.developers,
+      publishers: steamData.publishers,
+      release_date: steamData.release_date?.date,
+      coming_soon: steamData.release_date?.coming_soon,
+      tags: steamData.genres?.map((g: any) => g.description) || [],
+      categories: steamData.categories?.map((c: any) => c.description) || [],
+      platforms: steamData.platforms,
+      metacritic_score: steamData.metacritic?.score,
+      screenshots: steamData.screenshots?.map((s: any) => s.path_full) || [],
+      type: steamData.type,
+      website: steamData.website,
+      required_age: steamData.required_age,
+      recommendations: steamData.recommendations?.total,
+    };
+
+    await algoliaIndex.saveObject(algoliaRecord);
+    return true;
+  } catch (error) {
+    console.error(`Failed to upload app ${appId} to Algolia:`, error);
+    return false;
+  }
+}
+
 async function fetchSteamAppDetails(
   appId: string,
   retries = 0
@@ -198,6 +261,7 @@ const main = async () => {
     let processed = 0;
     let enhanced = 0;
     let failed = 0;
+    let algoliaUploaded = 0;
 
     for (const game of huntedGames) {
       console.log(
@@ -227,6 +291,21 @@ const main = async () => {
             console.log(
               `✓ Enhanced: ${steamDetails.data.name} (${steamDetails.data.type})`
             );
+
+            // Upload to Algolia if configured
+            if (algoliaIndex) {
+              const algoliaSuccess = await uploadToAlgolia(
+                game.app_id,
+                game.steam_url,
+                steamDetails.data
+              );
+              if (algoliaSuccess) {
+                algoliaUploaded++;
+                console.log(`  ✓ Uploaded to Algolia`);
+              } else {
+                console.log(`  ⚠️ Failed to upload to Algolia`);
+              }
+            }
           }
         } else {
           // Mark as failed
@@ -281,6 +360,9 @@ const main = async () => {
     console.log(`Total games processed: ${processed}`);
     console.log(`Successfully enhanced: ${enhanced}`);
     console.log(`Enhancement errors: ${failed}`);
+    if (algoliaIndex) {
+      console.log(`Uploaded to Algolia: ${algoliaUploaded}`);
+    }
     console.log(
       `✅ Games are now ready for processing step (status='enhanced')`
     );

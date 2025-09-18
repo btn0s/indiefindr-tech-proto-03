@@ -2,8 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { embed, generateText } from "ai";
 import { GameData } from "@/lib/types";
 import models from "@/lib/ai/models";
-import fs from "fs";
-import path from "path";
+import { GAMING_REFERENCE } from "@/lib/constants/gaming-reference";
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,22 +14,9 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Load gaming reference once
-let gamingReference: string | null = null;
+// Gaming reference is now imported as a constant
 function getGamingReference(): string {
-  if (!gamingReference) {
-    try {
-      const referencePath = path.join(
-        process.cwd(),
-        "src/assets/context/gaming-reference.txt"
-      );
-      gamingReference = fs.readFileSync(referencePath, "utf-8");
-    } catch (error) {
-      console.error("Failed to load gaming reference:", error);
-      gamingReference = "";
-    }
-  }
-  return gamingReference;
+  return GAMING_REFERENCE;
 }
 
 function convertToGameData(

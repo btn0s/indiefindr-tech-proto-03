@@ -10,7 +10,8 @@
     "hunt": "pnpx tsx src/lib/ai/0-hunt.ts",
     "enhance": "pnpx tsx src/lib/ai/1-enhance.ts",
     "process": "pnpx tsx src/lib/ai/2-process.ts",
-    "run-pipeline": "pnpx tsx src/lib/ai/pipeline.ts"
+    "run-pipeline": "pnpx tsx src/lib/ai/pipeline.ts",
+    "dump-to-algolia": "pnpx tsx src/lib/ai/supabase-to-algolia.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.2",
@@ -43,7 +44,9 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
+    "add": "^2.0.6",
     "ai": "^5.0.44",
+    "algoliasearch": "^5.37.0",
     "apify-client": "^2.17.0",
     "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
@@ -53,6 +56,7 @@
     "dotenv": "^17.2.2",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "instantsearch.css": "^8.5.1",
     "lucide-react": "^0.544.0",
     "nanoid": "^5.1.5",
     "next": "15.5.3",
@@ -61,6 +65,7 @@
     "react-day-picker": "^9.10.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
+    "react-instantsearch": "^7.16.3",
     "react-resizable-panels": "^3.0.6",
     "recharts": "2.15.4",
     "sonner": "^2.0.7",

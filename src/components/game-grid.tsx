@@ -1,7 +1,13 @@
 import { GameCard } from "./game-card";
 import { GameData } from "@/lib/types";
 
-export const GameGrid = ({ games, query }: { games: GameData[]; query?: string }) => {
+export const GameGrid = ({
+  games,
+  query,
+}: {
+  games: any[];
+  query?: string;
+}) => {
   return (
     <div className="space-y-4">
       {query && (
@@ -18,7 +24,7 @@ export const GameGrid = ({ games, query }: { games: GameData[]; query?: string }
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {games.map((game) => (
           <GameCard
-            key={`${game.appId}-${game.tweetId}`}
+            key={game.appId || game.app_id || game.objectID || Math.random()}
             game={game}
             query={query}
           />

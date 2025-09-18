@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { GameData } from "@/lib/types";
 
 interface GameListProps {
-  initialGames: GameData[];
+  initialGames: any[]; // Use any since we now handle both GameData and AlgoliaGame
   query?: string;
   initialHasMore: boolean;
   initialTotalCount: number;
@@ -18,7 +18,7 @@ export function GameListWithLoadMore({
   initialHasMore,
   initialTotalCount,
 }: GameListProps) {
-  const [games, setGames] = useState<GameData[]>(initialGames);
+  const [games, setGames] = useState<any[]>(initialGames);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,16 +34,18 @@ export function GameListWithLoadMore({
       if (query) params.set("q", query);
       params.set("page", String(nextPage));
 
-      const response = await fetch(`/api/search?${params.toString()}`);
+      const response = await fetch(`/api/search-new?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch");
 
       const result = await response.json();
 
       setGames((prev) => {
-        // Filter out duplicates by appId
-        const existingAppIds = new Set(prev.map((game) => game.appId));
+        // Filter out duplicates by appId (handle both structures)
+        const existingAppIds = new Set(
+          prev.map((game) => game.appId || game.app_id)
+        );
         const newGames = result.games.filter(
-          (game: GameData) => !existingAppIds.has(game.appId)
+          (game: any) => !existingAppIds.has(game.appId || game.app_id)
         );
         return [...prev, ...newGames];
       });
