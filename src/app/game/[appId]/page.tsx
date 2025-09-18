@@ -40,13 +40,9 @@ export async function generateMetadata({
 
   return {
     title: `${title} is on Indiefindr`,
-    description: `${description} Developed by ${developer}. ${
-      genres ? `Genres: ${genres}. ` : ""
-    }${
-      price ? `Price: ${price}. ` : ""
-    }A hidden indie gem that deserves attention.`.trim(),
+    description: description,
     openGraph: {
-      title: `${title} - Hidden Indie Gem on Indiefindr`,
+      title: `${title} is on Indiefindr`,
       description: description,
       images: steamData.header_image ? [steamData.header_image] : ["/og.png"],
     },
