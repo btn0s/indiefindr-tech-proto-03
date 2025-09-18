@@ -11,7 +11,7 @@ function isNaturalLanguageQuery(query: string): boolean {
     query.includes(" like "),
     query.includes(" with "),
     query.includes(" that "),
-    query.split(" ").length > 4,
+    query.split(" ").length > 3, // Lowered threshold so "games like X" triggers LLM
     /\b(cozy|atmospheric|challenging|similar to|games like)\b/i.test(query),
     /\b(I want|looking for|find me|recommend)\b/i.test(query),
   ];
@@ -206,20 +206,31 @@ export async function GET(request: NextRequest) {
           indexName: ALGOLIA_INDEX,
           params: {
             query,
-            hitsPerPage: pageSize,
-            page: page - 1, // Algolia uses 0-based pages
+            hitsPerPage: 1000, // Get more results for better ranking
           },
         },
       ]);
 
       const result = results[0];
       const hits = "hits" in result ? result.hits : [];
-      const totalHits = "hits" in result ? result.nbHits || 0 : 0;
+
+      // Apply our intelligent scoring to keyword results too
+      const scoredHits = hits
+        .map((game: any) => {
+          const { score, reason } = calculateAlgoliaScore(game);
+          return { ...game, score, matchReason: reason };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      // Apply pagination after scoring
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedHits = scoredHits.slice(startIndex, endIndex);
 
       return NextResponse.json({
-        games: hits,
-        totalCount: totalHits,
-        hasMore: page * pageSize < totalHits,
+        games: paginatedHits,
+        totalCount: scoredHits.length,
+        hasMore: endIndex < scoredHits.length,
       });
     }
 

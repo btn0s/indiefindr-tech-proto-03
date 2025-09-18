@@ -1,7 +1,13 @@
 import { GameCard } from "./game-card";
 import { GameData } from "@/lib/types";
 
-export const GameGrid = ({ games, query }: { games: GameData[]; query?: string }) => {
+export const GameGrid = ({
+  games,
+  query,
+}: {
+  games: any[];
+  query?: string;
+}) => {
   return (
     <div className="space-y-4">
       {query && (
