@@ -34,6 +34,10 @@ export const GameCard = ({ game }: { game: GameData }) => {
           {/* {game.releaseDate && <div>Release: {game.releaseDate}</div>} */}
         </div>
 
+        {game.matchReason && (
+          <div className="text-xs text-foreground mb-2">{game.matchReason}</div>
+        )}
+
         <div className="flex flex-wrap gap-1">
           {game.tags.slice(0, 4).map((tag, tagIndex) => (
             <span

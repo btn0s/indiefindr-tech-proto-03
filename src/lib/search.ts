@@ -14,7 +14,11 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 
-function convertToGameData(game: any, similarity: number = 1): GameData {
+function convertToGameData(
+  game: any,
+  similarity: number = 1,
+  matchReason?: string
+): GameData {
   const steamData = game.steam_data;
 
   return {
@@ -39,6 +43,7 @@ function convertToGameData(game: any, similarity: number = 1): GameData {
     tweetText: game.semantic_description,
     tweetUrl: `https://store.steampowered.com/app/${game.app_id}`,
     similarity,
+    matchReason,
     structuredMetadata: {
       play_modes: extractPlayModes(steamData),
       steam_tags: steamData.genres?.map((g: any) => g.description) || [],
@@ -75,36 +80,56 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (magnitudeA * magnitudeB);
 }
 
-async function transformQuery(userQuery: string): Promise<string> {
+async function scoreGameRelevance(
+  query: string,
+  game: any
+): Promise<{ score: number; reason: string }> {
   try {
     const { text } = await generateText({
       model: models.chatModelMini,
-      temperature: 0.5,
-      system: `Transform user search queries into concise, keyword-rich descriptions for semantic game search. Focus on core gameplay mechanics, genres, and player experience.
+      temperature: 0.4,
+      system: `You are an enthusiastic game curator helping users discover games they might enjoy. Create compelling connections using "if you like X, you'll like this" style explanations.
 
-Gaming-specific terms to recognize:
-- "suikalike" → "physics dropping puzzle fruit merging watermelon stacking combining objects casual puzzle"
-- "roguelike" → "procedural generation permadeath dungeon crawler random levels turn-based combat"
-- "soulslike" → "challenging combat stamina management dark atmosphere boss battles death penalties"
-- "metroidvania" → "interconnected world ability gating backtracking exploration platforming"
-- "tetrislike" → "falling blocks line clearing spatial puzzle quick reflexes"
-- "2048like" → "number combining grid sliding mathematical puzzle"
+Return ONLY this format:
+SCORE: [0-10]
+REASON: [exactly 20 words max, use "If you like..." or "Like X but with..." style]
 
-For other queries, extract:
-- Core mechanics (combat, puzzle, exploration, building, etc.)
-- Visual style (pixel art, minimalist, colorful, dark, etc.)
-- Emotional tone (relaxing, challenging, scary, cozy, etc.)
-- Player count (single-player, multiplayer, co-op, etc.)
-- Genre keywords (action, adventure, simulation, strategy, etc.)
+Examples:
+SCORE: 9
+REASON: If you like roguelikes, you'll love this deckbuilding twist on classic dungeon crawling mechanics.
 
-Output should be a focused string of relevant keywords and phrases, not full sentences.`,
-      prompt: `Convert "${userQuery}" into search keywords:`,
+SCORE: 7  
+REASON: Like roguelikes but prefer strategy? This combines tactical combat with progressive difficulty and exploration.
+
+SCORE: 5
+REASON: If you enjoy challenging games, this offers similar strategic depth with unique boss encounters.
+
+Focus on positive appeal and connections. Make users excited to try the game.`,
+      prompt: `User searched for: "${query}"
+
+Game: "${game.steam_data.name}"
+Description: "${game.steam_data.short_description}"
+Genres: ${(game.steam_data.genres || [])
+        .map((g: any) => g.description)
+        .join(", ")}
+
+Create an appealing connection for users who searched "${query}":`,
     });
 
-    return text.trim();
+    // Parse the response
+    const lines = text.trim().split("\n");
+    const scoreLine = lines.find((line) => line.startsWith("SCORE:"));
+    const reasonLine = lines.find((line) => line.startsWith("REASON:"));
+
+    const score = scoreLine ? parseInt(scoreLine.split(":")[1].trim()) : 0;
+    const reason = reasonLine
+      ? reasonLine.split(":")[1].trim()
+      : "Might appeal to similar gaming interests";
+
+    return { score: score / 10, reason }; // Normalize to 0-1
   } catch (error) {
-    console.error("Query transformation failed:", error);
-    return userQuery; // Fallback to original query
+    console.error("LLM scoring failed:", error);
+    return { score: 0, reason: "Might appeal to similar gaming interests" };
   }
 }
 
@@ -142,20 +167,7 @@ export async function searchGames(
   const startTime = Date.now();
 
   try {
-    // Get text matches first (fast, exact keyword matching)
-    const textMatches = await getTextMatches(query);
-
-    // Transform natural language query into rich semantic description
-    const semanticQuery = await transformQuery(query);
-    console.log(`🔄 Query transformation: "${query}" → "${semanticQuery}"`);
-
-    // Get query embedding for semantic search
-    const { embedding: queryEmbedding } = await embed({
-      model: models.embeddingModel,
-      value: semanticQuery,
-    });
-
-    // Load all games for semantic search
+    // Load all games
     const { data: allGames, error } = await supabase
       .from("games")
       .select("app_id, semantic_description, embedding, steam_data")
@@ -170,60 +182,37 @@ export async function searchGames(
       return [];
     }
 
-    // Create a map for quick lookup
-    const textMatchIds = new Set(textMatches.map((game) => game.app_id));
+    console.log(
+      `🔄 LLM scoring ${allGames.length} games for query: "${query}"`
+    );
 
-    // Find similar games with hybrid scoring
-    const threshold = 0.5;
-    const candidates = allGames
-      .map((game: any) => {
-        if (!game.embedding) return null;
+    // Use LLM to score and explain each game's relevance
+    const scoredGames = await Promise.all(
+      allGames.map(async (game: any) => {
+        const { score, reason } = await scoreGameRelevance(query, game);
 
-        // Parse embedding if it's a string
-        const gameEmbedding =
-          typeof game.embedding === "string"
-            ? JSON.parse(game.embedding)
-            : game.embedding;
+        if (score < 0.3) return null; // Filter out low-relevance games
 
-        const semanticSimilarity = cosineSimilarity(
-          queryEmbedding,
-          gameEmbedding
-        );
-        const hasTextMatch = textMatchIds.has(game.app_id);
-
-        // Hybrid scoring: combine text matching with semantic similarity
-        let finalSimilarity = semanticSimilarity;
-
-        if (hasTextMatch) {
-          // Check for exact title match first
-          const title = game.steam_data.name?.toLowerCase() || "";
-          const normalizedQuery = query.toLowerCase().trim();
-
-          if (title === normalizedQuery) {
-            // Exact title match gets perfect score
-            finalSimilarity = 1.0;
-          } else {
-            // Other text matches get a significant boost
-            finalSimilarity = Math.max(0.8, semanticSimilarity * 1.3);
-          }
-        }
-
-        // Lower threshold for text matches since they're more precise
-        const minThreshold = hasTextMatch ? 0.3 : threshold;
-        if (finalSimilarity < minThreshold) return null;
-
-        return convertToGameData(game, finalSimilarity);
+        return {
+          game,
+          score,
+          reason,
+        };
       })
-      .filter((game): game is GameData => game !== null)
-      .sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+    );
+
+    // Filter out null results and convert to GameData
+    const candidates = scoredGames
+      .filter((result): result is NonNullable<typeof result> => result !== null)
+      .sort((a, b) => b.score - a.score)
+      .map(({ game, score, reason }) => convertToGameData(game, score, reason));
 
     // Save search analytics
     const processingTime = Date.now() - startTime;
     try {
       await supabase.from("searches").insert({
         original_query: query,
-        transformed_query: semanticQuery,
-        query_embedding: queryEmbedding,
+        transformed_query: `LLM-scored search`,
         result_count: candidates.length,
         processing_time_ms: processingTime,
         user_id: userId,

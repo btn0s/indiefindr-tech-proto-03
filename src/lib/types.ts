@@ -52,6 +52,7 @@ export interface GameData {
   tweetText: string;
   tweetUrl: string;
   similarity: number;
+  matchReason?: string;
   structuredMetadata: StructuredMetadata;
 }
 
