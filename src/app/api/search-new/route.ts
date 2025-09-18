@@ -78,7 +78,7 @@ Return EXACTLY 10 words that capture the essence.`,
       prompt: `Extract the 10-word vibe for: "${originalQuery}"`,
     });
 
-    return text.trim().split(" ").slice(0, 10).join(" ");
+    return text.trim().replace(/^"|"$/g, "").split(" ").slice(0, 10).join(" ");
   } catch (error) {
     console.error("Failed to generate query vibe:", error);
     return `games matching ${originalQuery.split(" ").slice(0, 6).join(" ")}`;
@@ -90,47 +90,67 @@ function calculateAlgoliaScore(game: any): { score: number; reason: string } {
   const reasons: string[] = [];
   const highlights = game._highlightResult || {};
 
-  // Field weights (higher = more important)
+  // Enhanced field weights with more nuance
   const fieldWeights = {
-    name: 10,
-    description: 8,
-    semantic_description: 9,
-    tags: 6,
-    developers: 4,
-    categories: 3,
+    name: 20, // Title matches are gold
+    description: 15, // Short description is key
+    semantic_description: 25, // AI-curated content is premium
+    tags: 12, // Genre/category matches are important
+    categories: 8, // Steam categories matter
+    developers: 3, // Developer matches are nice but not crucial
   };
+
+  // Track match quality for bonus scoring
+  let hasNameMatch = false;
+  let hasSemanticMatch = false;
+  let totalMatchedWords = 0;
 
   // Check each field for matches
   Object.entries(fieldWeights).forEach(([field, weight]) => {
     const highlight = highlights[field];
     if (!highlight) return;
 
-    // Handle arrays (like tags, developers)
     const items = Array.isArray(highlight) ? highlight : [highlight];
 
     items.forEach((item: any) => {
+      const wordCount = item.matchedWords?.length || 0;
+      totalMatchedWords += wordCount;
+
       if (item.matchLevel === "full") {
-        score += weight * 2;
-        reasons.push(`Perfect match in ${field}`);
+        score += weight * 3; // Increased multiplier for full matches
+        reasons.push(`Perfect ${field} match`);
+        if (field === "name") hasNameMatch = true;
       } else if (item.matchLevel === "partial") {
-        const wordCount = item.matchedWords?.length || 0;
-        score += weight * wordCount * 0.5;
+        score += weight * wordCount * 0.8; // Increased partial match value
         if (wordCount > 0) {
           reasons.push(`"${item.matchedWords.join(", ")}" in ${field}`);
+          if (field === "semantic_description") hasSemanticMatch = true;
         }
       }
     });
   });
 
-  // Bonus for semantic description matches (AI-generated content)
-  if (highlights.semantic_description?.matchLevel === "partial") {
-    score += 5;
-    reasons.push("AI-curated match");
+  // Quality bonuses
+  if (hasNameMatch) score += 15; // Big bonus for title matches
+  if (hasSemanticMatch) score += 10; // Bonus for AI content matches
+  if (totalMatchedWords >= 3) score += 8; // Multi-word match bonus
+  if (totalMatchedWords >= 5) score += 12; // Rich query bonus
+
+  // Freshness bonus (newer games get slight boost)
+  if (!game.coming_soon && game.release_date) {
+    const releaseYear = new Date(game.release_date).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (currentYear - releaseYear <= 2) score += 3; // Recent games bonus
   }
 
-  // Generate reason
-  const reason =
-    reasons.length > 0 ? reasons.slice(0, 2).join(", ") : "Found via search";
+  // Penalty for very sparse data
+  const hasRichData =
+    game.description && game.tags?.length > 1 && game.developers?.length > 0;
+  if (!hasRichData) score *= 0.8;
+
+  // Generate concise reason
+  const topReasons = reasons.slice(0, 2);
+  const reason = topReasons.length > 0 ? topReasons.join(", ") : "Search match";
 
   return { score: Math.round(score * 10) / 10, reason };
 }
