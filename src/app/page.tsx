@@ -52,13 +52,13 @@ export default async function Home({
   const page = parseInt(params.page || "1", 10);
 
   return (
-    <div className="py-12">
+    <div className="py-12 flex flex-col gap-12">
       <div className="text-center">
         <h1 className="text-4xl font-bold">Indiefindr</h1>
         <p className="text-muted-foreground text-lg mb-6 max-w-lg mx-auto text-balance">
           Discover your next favorite indie game.
         </p>
-        <div className="mx-auto max-w-lg">
+        <div className="mx-auto max-w-2xl">
           <SearchBox query={query} />
         </div>
       </div>

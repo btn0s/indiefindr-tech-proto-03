@@ -7,6 +7,15 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
 
+const suggestions = [
+  "games like Stardew Valley",
+  "I want cozy farming games",
+  "recommend challenging platformers",
+  "something like Among Us",
+  "find me pixel art games",
+  "atmospheric puzzle games",
+];
+
 export function SearchBox({
   query,
   disabled,
@@ -15,7 +24,6 @@ export function SearchBox({
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isValid, setIsValid] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const searchParams = useSearchParams();
@@ -34,25 +42,13 @@ export function SearchBox({
       startTransition(() => {
         router.push(`${pathname}?${params.toString()}`);
       });
-      setIsValid(true);
     } else if (term.length === 0) {
       const params = new URLSearchParams(searchParams);
       params.delete("q");
       startTransition(() => {
         router.push(`${pathname}?${params.toString()}`);
       });
-      setIsValid(true);
     } else {
-      setIsValid(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    if (newValue.length === 0 || newValue.length >= 3) {
-      setIsValid(true);
-    } else {
-      setIsValid(false);
     }
   };
 
@@ -66,9 +62,17 @@ export function SearchBox({
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("q", suggestion);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
+
   return (
-    <div className="flex flex-col">
-      <div className="w-full mx-auto mb-4">
+    <div className="flex flex-col gap-4">
+      <div className="w-full mx-auto">
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <div className="relative w-full flex items-center">
             <Input
@@ -77,7 +81,6 @@ export function SearchBox({
               name="search"
               defaultValue={query ?? ""}
               minLength={3}
-              onChange={handleInputChange}
               className="text-base w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Search for games, genres, or features..."
             />
@@ -121,14 +124,26 @@ export function SearchBox({
             </svg>
           </Button>
         </form>
-        {!isValid ? (
-          <div className="text-xs pt-2 text-red-500">
-            Query must be 3 characters or longer
-          </div>
-        ) : (
-          <div className="h-6" />
-        )}
       </div>
+
+      {!q && (
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-3">
+            or try one of these:
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
