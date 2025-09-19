@@ -12,7 +12,7 @@ import {
   CombinedSchema,
 } from "./schema";
 
-const MODEL = "openai/gpt-4o";
+const MODEL = "google/gemini-2.5-pro";
 
 // Combined type for the final result
 export type LLMExtraction = z.infer<typeof BasicInfoSchema> &
