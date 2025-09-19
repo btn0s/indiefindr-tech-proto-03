@@ -14,7 +14,7 @@
     "dump-to-algolia": "pnpx tsx src/lib/ai/supabase-to-algolia.ts"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.0.2",
+    "@ai-sdk/openai": "2.0.32",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -45,7 +45,7 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
     "add": "^2.0.6",
-    "ai": "^5.0.44",
+    "ai": "5.0.47",
     "algoliasearch": "^5.37.0",
     "apify-client": "^2.17.0",
     "cheerio": "^1.1.2",
@@ -72,7 +72,7 @@
     "tailwind-merge": "^3.3.1",
     "use-debounce": "^10.0.6",
     "vaul": "^1.1.2",
-    "zod": "^3.25.76"
+    "zod": "3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -85,6 +85,6 @@
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8",
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   }
 }

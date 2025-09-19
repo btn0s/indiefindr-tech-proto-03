@@ -15,8 +15,37 @@ interface DebugGameCardProps {
 
 export function DebugGameCard({ appId, steamUrl }: DebugGameCardProps) {
   const [gameData, setGameData] = useState<SteamGame | null>(null);
+  const [extractedData, setExtractedData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  const extractData = async (steamData: any) => {
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const extractResponse = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ steam: steamData }),
+      });
+
+      if (extractResponse.ok) {
+        const extractData = await extractResponse.json();
+        setExtractedData(extractData);
+      } else {
+        const errorText = await extractResponse.text();
+        setExtractError(`Extract failed: ${errorText}`);
+      }
+    } catch (extractErr) {
+      setExtractError(
+        extractErr instanceof Error ? extractErr.message : "Unknown error"
+      );
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const fetchSteamData = async () => {
     setLoading(true);
@@ -28,6 +57,9 @@ export function DebugGameCard({ appId, steamUrl }: DebugGameCardProps) {
 
       if (response.ok && data.success) {
         setGameData(data.data.data);
+
+        // Now extract the data using the extract API
+        extractData(data.data.data);
       } else {
         throw new Error(data.error || "Failed to fetch Steam data");
       }
@@ -127,6 +159,19 @@ export function DebugGameCard({ appId, steamUrl }: DebugGameCardProps) {
               )}
             </div>
 
+            {/* Website */}
+            {gameData?.website && (
+              <p className="text-sm text-blue-500 hover:underline">
+                <a
+                  href={gameData.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {gameData.website}
+                </a>
+              </p>
+            )}
+
             {/* Genres */}
             {gameData?.genres && (
               <div className="flex flex-wrap gap-1">
@@ -161,28 +206,88 @@ export function DebugGameCard({ appId, steamUrl }: DebugGameCardProps) {
             )}
           </div>
 
-          {/* Column 2: Raw Steam Data */}
+          {/* Column 2: Extracted Data & Raw Steam Data */}
           <div className="space-y-4">
+            {/* AI Extracted Data */}
             <div>
-              <h4 className="font-semibold text-sm mb-2">Raw Steam Data</h4>
-              {loading ? (
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading Steam data...
-                </div>
-              ) : error ? (
-                <div className="text-sm text-destructive">Error: {error}</div>
-              ) : gameData ? (
-                <div className="bg-muted rounded p-3 max-h-96 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm">AI Extracted Data</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => gameData && extractData(gameData)}
+                  disabled={extracting || !gameData}
+                  className="h-6 px-2 text-xs"
+                >
+                  {extracting ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Extracting...
+                    </>
+                  ) : (
+                    "Retry Extract"
+                  )}
+                </Button>
+              </div>
+              <div className="bg-muted rounded p-3 max-h-96 overflow-y-auto">
+                {extracting ? (
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Extracting data with AI...
+                  </div>
+                ) : extractError ? (
+                  <div className="text-sm text-destructive">{extractError}</div>
+                ) : extractedData ? (
+                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    {JSON.stringify(extractedData, null, 2)}
+                  </pre>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No extracted data available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Raw Steam Data */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm">Raw Steam Data</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchSteamData}
+                  disabled={loading}
+                  className="h-6 px-2 text-xs"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Retry Fetch"
+                  )}
+                </Button>
+              </div>
+              <div className="bg-muted rounded p-3 max-h-96 overflow-y-auto">
+                {loading ? (
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading Steam data...
+                  </div>
+                ) : error ? (
+                  <div className="text-sm text-destructive">Error: {error}</div>
+                ) : gameData ? (
                   <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
                     {JSON.stringify(gameData, null, 2)}
                   </pre>
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  No Steam data available
-                </div>
-              )}
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No Steam data available
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -32,8 +32,6 @@ export async function GET(
       );
     }
 
-    console.log(`Fetched Steam game data for ${appId}`, gameData);
-
     return NextResponse.json({
       success: true,
       data: gameData,
