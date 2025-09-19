@@ -1,27 +1,11 @@
 import { NextResponse } from "next/server";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
-import {
-  BasicInfoSchema,
-  GameplaySchema,
-  WorldNarrativeSchema,
-  AestheticsSchema,
-  ExperienceSchema,
-  ContentRatingSchema,
-  TagsSchema,
-  CombinedSchema,
-} from "./schema";
+import { CombinedSchema } from "./schema";
 
 const MODEL = "google/gemini-2.5-pro";
 
-// Combined type for the final result
-export type LLMExtraction = z.infer<typeof BasicInfoSchema> &
-  z.infer<typeof GameplaySchema> &
-  z.infer<typeof WorldNarrativeSchema> &
-  z.infer<typeof AestheticsSchema> &
-  z.infer<typeof ExperienceSchema> &
-  z.infer<typeof ContentRatingSchema> &
-  z.infer<typeof TagsSchema>;
+export type LLMExtraction = z.infer<typeof CombinedSchema>;
 
 type Platform = "windows" | "mac" | "linux";
 
@@ -105,7 +89,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    const result = await generateObject({
+    const { object: llm } = await generateObject({
       model: MODEL,
       mode: "json",
       schema: CombinedSchema,
@@ -113,23 +97,54 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "Extract basic game information from Steam data. Be concise and accurate.",
+            "You are a game analysis expert. Extract rich gaming data for indexing and embeddings. Use precise gaming terminology and be comprehensive.",
         },
         {
           role: "user",
           content: `Steam Data: ${JSON.stringify(steam, null, 2)}
 
-Extract:
-- title: Clean game title
-- blurb_140: Compelling 140-char description 
-- blurb_400: Detailed description up to 600 chars
+Extract comprehensive game data focusing on:
+- Specific game formats (arena_shooter, roguelike, etc.)
+- Visual aesthetics (pixel_art, psx, lofi, realistic, etc.)
+- Core mechanics and systems
+- Searchable tags for discovery
 
-Focus on making the blurbs engaging for discovery.`,
+Be detailed with aesthetics - capture retro styles, rendering techniques, and visual moods.`,
         },
       ],
     });
 
-    return result.toJsonResponse();
+    const name = steam.name ?? "";
+    const platforms = mapSteamPlatforms(steam.platforms);
+    const releaseDate = steam.release_date?.date;
+    const now = new Date().toISOString();
+
+    const indexRow: GameIndexRow = {
+      ...llm,
+      // Override/add non-LLM fields
+      id: `steam-${steam.steam_appid}`,
+      slug: slugify(llm.title || name || String(steam.steam_appid)),
+      title: llm.title || name || "Untitled",
+      platforms,
+      tag_names: Array.from(
+        new Set(
+          (llm.tag_names ?? [])
+            .map((t: string) => t.trim().toLowerCase())
+            .filter(Boolean)
+        )
+      ),
+      // Steam metadata
+      thumb: steam.capsule_image ?? undefined,
+      header: steam.header_image ?? undefined,
+      release_date: releaseDate,
+      steam_appid: steam.steam_appid,
+      updated_at: now,
+    };
+
+    return NextResponse.json({
+      ok: true,
+      indexRow,
+    });
   } catch (e: any) {
     if (NoObjectGeneratedError.isInstance(e)) {
       console.log("NoObjectGeneratedError");

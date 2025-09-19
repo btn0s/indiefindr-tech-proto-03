@@ -641,12 +641,62 @@ export const TagsSchema = z.object({
     ),
 });
 
+// Simplified combined schema with reduced branching
 export const CombinedSchema = z.object({
-  basicInfo: BasicInfoSchema,
-  gameplay: GameplaySchema,
-  worldNarrative: WorldNarrativeSchema,
-  aesthetics: AestheticsSchema,
-  experience: ExperienceSchema,
-  contentRating: ContentRatingSchema,
-  tags: TagsSchema,
+  // Basic info (required to reduce branching)
+  title: z.string().describe("Clean, readable game title"),
+  blurb_140: z
+    .string()
+    .optional()
+    .describe(
+      "Compelling short description for discovery (aim for ~140 chars)"
+    ),
+
+  // Core gameplay (make some required)
+  game_formats: z
+    .array(GameFormatEnum)
+    .describe(
+      "Specific game subgenres and formats (e.g. arena_shooter, roguelike, mmorpg)"
+    ),
+  gameplay_mechanics: z
+    .array(GameplayMechanicEnum)
+    .optional()
+    .describe("Core game mechanics and systems"),
+
+  // Aesthetics (key for your use case)
+  art_style: z
+    .array(ArtStyleEnum)
+    .describe(
+      "Visual art style and aesthetic choices (e.g. pixel_art, psx, lofi, realistic)"
+    ),
+
+  // Essential metadata
+  estimated_playtime: z
+    .enum([
+      "under_1h",
+      "1_3h",
+      "3_8h",
+      "8_20h",
+      "20_50h",
+      "50_100h",
+      "100h_plus",
+      "endless",
+    ])
+    .optional(),
+  maturity: MaturityEnum.optional().describe("Age rating/maturity level"),
+
+  // Searchable content
+  tag_names: z
+    .array(z.string())
+    .describe(
+      "Searchable tags covering genre, mechanics, visual style, setting, mood"
+    ),
+
+  // Optional detailed fields
+  camera: z.array(CameraEnum).optional(),
+  modes: z.array(ModeEnum).optional(),
+  setting: z.array(SettingEnum).optional(),
+  themes: z.array(ThemeEnum).optional(),
+  audio_style: z.array(AudioStyleEnum).optional(),
+  content_flags: z.array(ContentFlagEnum).optional(),
 });
