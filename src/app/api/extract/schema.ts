@@ -513,13 +513,11 @@ export const BasicInfoSchema = z.object({
   title: z.string().describe("Clean, readable game title"),
   blurb_140: z
     .string()
-    .optional()
     .describe(
       "Compelling short description for discovery (aim for ~140 chars)"
     ),
   blurb_400: z
     .string()
-    .optional()
     .describe(
       "Detailed description highlighting key features and appeal (aim for ~400 chars)"
     ),
@@ -528,40 +526,35 @@ export const BasicInfoSchema = z.object({
 export const GameplaySchema = z.object({
   gameplay_mechanics: z
     .array(GameplayMechanicEnum)
-    .optional()
+
     .describe(
       "Core game mechanics and systems (e.g. crafting, combat, survival, puzzle-solving)"
     ),
   game_formats: z
     .array(GameFormatEnum)
-    .optional()
+
     .describe(
       "Specific game subgenres and formats (e.g. arena_shooter, roguelike, mmorpg, battle_royale)"
     ),
   camera: z
     .array(CameraEnum)
-    .optional()
     .describe("Camera perspective(s) used in the game"),
   modes: z
     .array(ModeEnum)
-    .optional()
     .describe("Available play modes (single/multiplayer options)"),
   structure: z
     .array(StructureEnum)
-    .optional()
     .describe("How game content is organized and presented to players"),
 });
 
 export const WorldNarrativeSchema = z.object({
   setting: z
     .array(SettingEnum)
-    .optional()
     .describe(
       "Time period, world type, and environmental setting (e.g. medieval, sci_fi, cyberpunk, post_apocalyptic)"
     ),
   themes: z
     .array(ThemeEnum)
-    .optional()
     .describe(
       "Narrative and emotional themes explored in the game (e.g. survival, mystery, friendship, revenge)"
     ),
@@ -570,13 +563,11 @@ export const WorldNarrativeSchema = z.object({
 export const AestheticsSchema = z.object({
   art_style: z
     .array(ArtStyleEnum)
-    .optional()
     .describe(
       "Visual art style and aesthetic choices (e.g. pixel_art, psx, lofi, realistic, cel_shaded, low_poly)"
     ),
   audio_style: z
     .array(AudioStyleEnum)
-    .optional()
     .describe(
       "Music and audio style characteristics (e.g. chiptune, orchestral, electronic, ambient)"
     ),
@@ -586,7 +577,6 @@ export const ExperienceSchema = z
   .object({
     difficulty: z
       .array(DifficultyEnum)
-      .optional()
       .describe("Challenge level and difficulty characteristics of the game"),
     estimated_playtime: z
       .enum([
@@ -599,34 +589,32 @@ export const ExperienceSchema = z
         "100h_plus",
         "endless",
       ])
-      .optional()
+
       .describe(
         "Estimated time to complete main content or typical play session"
       ),
     complexity_level: z
       .enum(["simple", "moderate", "complex", "very_complex"])
-      .optional()
       .describe("Overall game complexity in terms of systems and mechanics"),
     learning_curve: z
       .enum(["easy", "moderate", "steep", "very_steep"])
-      .optional()
       .describe(
         "How difficult it is for new players to learn and understand the game"
       ),
     replayability: z
       .enum(["low", "moderate", "high", "infinite"])
-      .optional()
+
       .describe("How much replay value the game offers"),
   })
   .strict();
 
 export const ContentRatingSchema = z.object({
-  maturity: MaturityEnum.optional().describe(
+  maturity: MaturityEnum.describe(
     "Age rating/maturity level for the game content"
   ),
   content_flags: z
     .array(ContentFlagEnum)
-    .optional()
+
     .describe(
       "Specific content warnings and flags (be granular: mild_violence vs graphic_violence)"
     ),
@@ -635,7 +623,7 @@ export const ContentRatingSchema = z.object({
 export const TagsSchema = z.object({
   tag_names: z
     .array(z.string())
-    .optional()
+
     .describe(
       "Comprehensive searchable tags covering genre, mechanics, visual style, setting, mood, and notable features"
     ),
@@ -647,7 +635,6 @@ export const CombinedSchema = z.object({
   title: z.string().describe("Clean, readable game title"),
   blurb_140: z
     .string()
-    .optional()
     .describe(
       "Compelling short description for discovery (aim for ~140 chars)"
     ),
@@ -660,7 +647,6 @@ export const CombinedSchema = z.object({
     ),
   gameplay_mechanics: z
     .array(GameplayMechanicEnum)
-    .optional()
     .describe("Core game mechanics and systems"),
 
   // Aesthetics (key for your use case)
@@ -671,19 +657,17 @@ export const CombinedSchema = z.object({
     ),
 
   // Essential metadata
-  estimated_playtime: z
-    .enum([
-      "under_1h",
-      "1_3h",
-      "3_8h",
-      "8_20h",
-      "20_50h",
-      "50_100h",
-      "100h_plus",
-      "endless",
-    ])
-    .optional(),
-  maturity: MaturityEnum.optional().describe("Age rating/maturity level"),
+  estimated_playtime: z.enum([
+    "under_1h",
+    "1_3h",
+    "3_8h",
+    "8_20h",
+    "20_50h",
+    "50_100h",
+    "100h_plus",
+    "endless",
+  ]),
+  maturity: MaturityEnum.describe("Age rating/maturity level"),
 
   // Searchable content
   tag_names: z
@@ -692,11 +676,15 @@ export const CombinedSchema = z.object({
       "Searchable tags covering genre, mechanics, visual style, setting, mood"
     ),
 
+  // World and Narrative
+  setting: z
+    .array(SettingEnum)
+    .describe("Time period, world type, and environmental setting"),
+  themes: z.array(ThemeEnum).describe("Narrative and emotional themes"),
+
   // Optional detailed fields
-  camera: z.array(CameraEnum).optional(),
-  modes: z.array(ModeEnum).optional(),
-  setting: z.array(SettingEnum).optional(),
-  themes: z.array(ThemeEnum).optional(),
-  audio_style: z.array(AudioStyleEnum).optional(),
-  content_flags: z.array(ContentFlagEnum).optional(),
+  camera: z.array(CameraEnum),
+  modes: z.array(ModeEnum),
+  audio_style: z.array(AudioStyleEnum),
+  content_flags: z.array(ContentFlagEnum),
 });

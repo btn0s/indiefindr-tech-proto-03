@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
-import { CombinedSchema } from "./schema";
+import {
+  AestheticsSchema,
+  BasicInfoSchema,
+  ContentRatingSchema,
+  ExperienceSchema,
+  GameplaySchema,
+  TagsSchema,
+  WorldNarrativeSchema,
+} from "./schema";
 
-const MODEL = "google/gemini-2.5-pro";
+const MODEL = "moonshotai/kimi-k2";
 
-export type LLMExtraction = z.infer<typeof CombinedSchema>;
+export type LLMExtraction = z.infer<typeof BasicInfoSchema> &
+  z.infer<typeof GameplaySchema> &
+  z.infer<typeof WorldNarrativeSchema> &
+  z.infer<typeof AestheticsSchema> &
+  z.infer<typeof ExperienceSchema> &
+  z.infer<typeof ContentRatingSchema> &
+  z.infer<typeof TagsSchema>;
 
 type Platform = "windows" | "mac" | "linux";
 
@@ -89,30 +103,121 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    const { object: llm } = await generateObject({
-      model: MODEL,
-      mode: "json",
-      schema: CombinedSchema,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a game analysis expert. Extract rich gaming data for indexing and embeddings. Use precise gaming terminology and be comprehensive.",
-        },
-        {
-          role: "user",
-          content: `Steam Data: ${JSON.stringify(steam, null, 2)}
+    const baseMessages = [
+      {
+        role: "system",
+        content:
+          "You are a game analysis expert. Extract rich gaming data for indexing and embeddings. Use precise gaming terminology and be comprehensive.",
+      },
+      {
+        role: "user",
+        content: `Steam Data: ${JSON.stringify(steam, null, 2)}`,
+      },
+    ] as const;
 
-Extract comprehensive game data focusing on:
-- Specific game formats (arena_shooter, roguelike, etc.)
-- Visual aesthetics (pixel_art, psx, lofi, realistic, etc.)
-- Core mechanics and systems
-- Searchable tags for discovery
+    const [
+      basicInfo,
+      gameplay,
+      worldNarrative,
+      aesthetics,
+      experience,
+      contentRating,
+      tags,
+    ] = await Promise.all([
+      generateObject({
+        model: MODEL,
+        schema: BasicInfoSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Extract the game's title and write two blurbs (140 and 400 chars).",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: GameplaySchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Extract core gameplay mechanics, formats, camera, modes, and structure. Be specific (e.g., 'roguelike' not just 'RPG').",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: WorldNarrativeSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content: "Extract the game's setting and primary narrative themes.",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: AestheticsSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Extract the visual art style and audio style. Be detailed, including retro styles (PSX, lofi), rendering, and moods.",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: ExperienceSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Extract the difficulty, estimated playtime, complexity, learning curve, and replayability.",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: ContentRatingSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Extract the maturity rating and any specific content flags (e.g. 'mild_violence', 'gore').",
+          },
+        ],
+      }).then((res) => res.object),
+      generateObject({
+        model: MODEL,
+        schema: TagsSchema,
+        messages: [
+          ...baseMessages,
+          {
+            role: "user",
+            content:
+              "Generate a comprehensive list of searchable tags covering genre, mechanics, visuals, setting, and mood for discovery.",
+          },
+        ],
+      }).then((res) => res.object),
+    ]);
 
-Be detailed with aesthetics - capture retro styles, rendering techniques, and visual moods.`,
-        },
-      ],
-    });
+    const llm = {
+      ...basicInfo,
+      ...gameplay,
+      ...worldNarrative,
+      ...aesthetics,
+      ...experience,
+      ...contentRating,
+      ...tags,
+    };
 
     const name = steam.name ?? "";
     const platforms = mapSteamPlatforms(steam.platforms);
@@ -153,6 +258,8 @@ Be detailed with aesthetics - capture retro styles, rendering techniques, and vi
       console.log("Response:", e.response);
       console.log("Usage:", e.usage);
       console.log("Finish Reason:", e.finishReason);
+    } else {
+      console.error("Unknown error", e);
     }
     return NextResponse.json(
       { error: e?.message ?? "Unknown error" },
