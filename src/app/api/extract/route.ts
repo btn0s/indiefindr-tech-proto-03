@@ -1,25 +1,8 @@
 import { NextResponse } from "next/server";
-import { generateObject, NoObjectGeneratedError } from "ai";
-import { z } from "zod";
-import {
-  AestheticsSchema,
-  BasicInfoSchema,
-  ContentRatingSchema,
-  ExperienceSchema,
-  GameplaySchema,
-  TagsSchema,
-  WorldNarrativeSchema,
-} from "./schema";
+import { NoObjectGeneratedError } from "ai";
+import { HierarchicalGameClassifier } from "../../../lib/ai/hierarchical-classifier";
 
 const MODEL = "moonshotai/kimi-k2";
-
-export type LLMExtraction = z.infer<typeof BasicInfoSchema> &
-  z.infer<typeof GameplaySchema> &
-  z.infer<typeof WorldNarrativeSchema> &
-  z.infer<typeof AestheticsSchema> &
-  z.infer<typeof ExperienceSchema> &
-  z.infer<typeof ContentRatingSchema> &
-  z.infer<typeof TagsSchema>;
 
 type Platform = "windows" | "mac" | "linux";
 
@@ -47,41 +30,26 @@ type GameIndexRow = {
   title: string;
   platforms: Platform[];
 
-  // Rich gameplay data
-  gameplay_mechanics?: string[];
-  game_formats?: string[];
-  camera?: string[];
-  modes?: string[];
-  structure?: string[];
-
-  // World and narrative
-  setting?: string[];
-  themes?: string[];
-
-  // Experience design
-  difficulty?: string[];
-
-  // Aesthetics - the key addition for rich indexing
-  art_style?: string[];
-  audio_style?: string[];
-
-  // Technical
-  accessibility_features?: string[];
-
-  // Content rating
-  maturity?: string;
-  content_flags?: string[];
+  // Hierarchical classification results
+  primary_genres: string[];
+  core_mechanics: string[];
+  game_structure: string;
+  player_interaction: string;
+  art_direction: string;
+  perspective: string;
+  setting_period: string;
+  mood_atmosphere: string;
+  difficulty_approach: string;
+  time_commitment: string;
 
   // Searchable content
   tag_names: string[];
-  blurb_140?: string;
-  blurb_400?: string;
+  blurb_140: string;
+  blurb_400: string;
 
-  // Additional metadata for embeddings
-  estimated_playtime?: string;
-  complexity_level?: string;
-  learning_curve?: string;
-  replayability?: string;
+  // Quality metrics
+  overall_confidence: number;
+  individual_confidences: Record<string, number>;
 
   // Media and Steam data
   thumb?: string;
@@ -103,121 +71,11 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    const baseMessages = [
-      {
-        role: "system",
-        content:
-          "You are a game analysis expert. Extract rich gaming data for indexing and embeddings. Use precise gaming terminology and be comprehensive.",
-      },
-      {
-        role: "user",
-        content: `Steam Data: ${JSON.stringify(steam, null, 2)}`,
-      },
-    ] as const;
-
-    const [
-      basicInfo,
-      gameplay,
-      worldNarrative,
-      aesthetics,
-      experience,
-      contentRating,
-      tags,
-    ] = await Promise.all([
-      generateObject({
-        model: MODEL,
-        schema: BasicInfoSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Extract the game's title and write two blurbs (140 and 400 chars).",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: GameplaySchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Extract core gameplay mechanics, formats, camera, modes, and structure. Be specific (e.g., 'roguelike' not just 'RPG').",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: WorldNarrativeSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content: "Extract the game's setting and primary narrative themes.",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: AestheticsSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Extract the visual art style and audio style. Be detailed, including retro styles (PSX, lofi), rendering, and moods.",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: ExperienceSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Extract the difficulty, estimated playtime, complexity, learning curve, and replayability.",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: ContentRatingSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Extract the maturity rating and any specific content flags (e.g. 'mild_violence', 'gore').",
-          },
-        ],
-      }).then((res) => res.object),
-      generateObject({
-        model: MODEL,
-        schema: TagsSchema,
-        messages: [
-          ...baseMessages,
-          {
-            role: "user",
-            content:
-              "Generate a comprehensive list of searchable tags covering genre, mechanics, visuals, setting, and mood for discovery.",
-          },
-        ],
-      }).then((res) => res.object),
-    ]);
-
-    const llm = {
-      ...basicInfo,
-      ...gameplay,
-      ...worldNarrative,
-      ...aesthetics,
-      ...experience,
-      ...contentRating,
-      ...tags,
-    };
+    // Initialize the hierarchical classifier
+    const classifier = new HierarchicalGameClassifier(MODEL);
+    
+    // Run hierarchical classification
+    const classification = await classifier.classifyGame(steam);
 
     const name = steam.name ?? "";
     const platforms = mapSteamPlatforms(steam.platforms);
@@ -225,19 +83,33 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
 
     const indexRow: GameIndexRow = {
-      ...llm,
-      // Override/add non-LLM fields
+      // Basic identifiers
       id: `steam-${steam.steam_appid}`,
-      slug: slugify(llm.title || name || String(steam.steam_appid)),
-      title: llm.title || name || "Untitled",
+      slug: slugify(classification.title || name || String(steam.steam_appid)),
+      title: classification.title || name || "Untitled",
       platforms,
-      tag_names: Array.from(
-        new Set(
-          (llm.tag_names ?? [])
-            .map((t: string) => t.trim().toLowerCase())
-            .filter(Boolean)
-        )
-      ),
+
+      // Hierarchical classification results
+      primary_genres: classification.primary_genres,
+      core_mechanics: classification.core_mechanics,
+      game_structure: classification.game_structure,
+      player_interaction: classification.player_interaction,
+      art_direction: classification.art_direction,
+      perspective: classification.perspective,
+      setting_period: classification.setting_period,
+      mood_atmosphere: classification.mood_atmosphere,
+      difficulty_approach: classification.difficulty_approach,
+      time_commitment: classification.time_commitment,
+
+      // Searchable content
+      tag_names: classification.searchable_tags,
+      blurb_140: classification.blurb_140,
+      blurb_400: classification.blurb_400,
+
+      // Quality metrics
+      overall_confidence: classification.overall_confidence,
+      individual_confidences: classification.individual_confidences,
+
       // Steam metadata
       thumb: steam.capsule_image ?? undefined,
       header: steam.header_image ?? undefined,
@@ -249,6 +121,12 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       indexRow,
+      classification_summary: {
+        primary_genres: classification.primary_genres,
+        overall_confidence: classification.overall_confidence,
+        total_tags: classification.searchable_tags.length,
+        facets_classified: Object.keys(classification.individual_confidences).length
+      }
     });
   } catch (e: any) {
     if (NoObjectGeneratedError.isInstance(e)) {
